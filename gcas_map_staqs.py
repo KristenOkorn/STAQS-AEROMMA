@@ -48,7 +48,7 @@ for i in range(len(fileList)):
     f = nc.Dataset(filePath, 'r')
 
     #print the list of base items for our reference
-    print(f.variables.keys())
+    #print(f.variables.keys())
 
     #pull out the variables we need
     time = f.variables['time'][:] #assuming secs past midnight
@@ -117,25 +117,38 @@ for i in range(len(fileList)):
     #projection = ccrs.Mercator(central_longitude=180) #else try this
 
     ax4 = plt.axes(projection=projection)
+    
+    #Add stock image with custom land and ocean colors
+    ax4.stock_img()
+    ax4.background_patch.set_facecolor('tan')  # Set land color
+    ax4.add_feature(cf.OCEAN, edgecolor='none', facecolor='lightblue')  # Set ocean color
+    
     ax4.add_feature(cf.COASTLINE)
     ax4.add_feature(cf.BORDERS)
-
+    
     plate = ccrs.PlateCarree()
 
     #first plot the pod data
     for k in range(len(locations)):
-        ax4.scatter(longitudes[k], latitudes[k],c=colors[k], s=15, transform=plate, label='{}'.format(locations[k]))
+        ax4.scatter(longitudes[k], latitudes[k],c=colors[k], s=20, transform=plate, label='{}'.format(locations[k]))
 
     #now add the GCAS data - lat/lon minimums first
-    ax4.scatter(max_lon, max_lat, c='black', s=5, transform=plate,label='GCAS Tracks')
+    ax4.scatter(max_lon, max_lat, c='gray', s=3, transform=plate,label='GCAS Tracks')
 
     #now add the GCAS data - lat/lon maximums second
-    ax4.scatter(max_lon, max_lat, c='black', s=5, transform=plate)
+    #ax4.scatter(max_lon, max_lat, c='gray', s=5, transform=plate)
+    
+    #Calculate the buffer values
+    x_buffer = .2 * (max(max_lon) - min(max_lon))
+    y_buffer = .2 * (max(max_lat) - min(max_lat))
+
+    #Adjust the extent based on the buffer
+    ax4.set_extent([min(max_lon) - x_buffer, max(max_lon) + x_buffer, min(max_lat) - y_buffer, max(max_lat) + y_buffer], crs=ccrs.PlateCarree())
     
     fig4.tight_layout()
     
     #Adding a title to fig4
-    fig4.suptitle('GCAS NO2 Data - {}/{}/{}'.format(year,month,day), y=1)  # Adjust the vertical position (0 to 1)
+    fig4.suptitle('GCAS NO2 Data - {}/{}/{}'.format(year,month,day), y=0.95)  # Adjust the vertical position (0 to 1)
     
     #add a legend
     ax4.legend(loc='upper right')
