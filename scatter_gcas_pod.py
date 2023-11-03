@@ -26,6 +26,9 @@ shapes = ['o','v','s','p','D']
 fig4 = plt.figure(4)
 ax4 = plt.axes()
 
+#initialize our counter for how many samples we have
+num = 0
+
 for n in range(len(locations)):
     #-------------------------------------
     #first load in the gcas csv's
@@ -76,7 +79,9 @@ for n in range(len(locations)):
                 pd.Timestamp('2023-08-26').date(): 'c'}
         #Replace datetime.date with strings
         merge['date'].replace(date_mapping, inplace=True)
-    
+        
+        #add the num of measurements to our counter
+        num = num + len(merge)
         #-------------------------------------
         #add the new data to our scatterplot
         ax4.scatter(merge['INSTEP O3'], merge['GCAS NO2'],c=merge['date'], marker=shapes[n], s=25, label = '{}'.format(locations[n]))
@@ -92,6 +97,8 @@ ax4.text(0.57,0.93, '2023-08-22', fontsize=12, transform=ax4.transAxes, color='b
 ax4.text(0.57,0.88, '2023-08-23', fontsize=12, color='r', transform=ax4.transAxes)
 ax4.text(0.57, 0.83, '2023-08-25', fontsize=12, color='g', transform=ax4.transAxes)
 ax4.text(0.57, 0.78, '2023-08-26', fontsize=12, color='c', transform=ax4.transAxes)
+ax4.text(0.57, 0.73, 'n = {}'.format(num), fontsize=12, color='black', transform=ax4.transAxes)
+
 
 #Adding a title to fig4
 fig4.suptitle('GCAS NO2 vs. INSTEP O3', y=1)  # Adjust the vertical position (0 to 1)
