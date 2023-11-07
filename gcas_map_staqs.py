@@ -148,7 +148,7 @@ for i in range(len(fileList)):
     fig4.tight_layout()
     
     #Adding a title to fig4
-    fig4.suptitle('GCAS NO2 Data - {}/{}/{}'.format(year,month,day), y=0.95)  # Adjust the vertical position (0 to 1)
+    fig4.suptitle('GCAS - {}/{}/{}'.format(year,month,day), y=0.95)  # Adjust the vertical position (0 to 1)
     
     #add a legend
     ax4.legend(loc='upper right')
