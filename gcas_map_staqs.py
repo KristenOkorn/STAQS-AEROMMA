@@ -128,15 +128,15 @@ for i in range(len(fileList)):
     
     plate = ccrs.PlateCarree()
 
-    #first plot the pod data
-    for k in range(len(locations)):
-        ax4.scatter(longitudes[k], latitudes[k],c=colors[k], s=20, transform=plate, label='{}'.format(locations[k]))
-
-    #now add the GCAS data - lat/lon minimums first
+    #first add the GCAS data - lat/lon minimums first
     ax4.scatter(max_lon, max_lat, c='gray', s=3, transform=plate,label='GCAS Tracks')
 
     #now add the GCAS data - lat/lon maximums second
     #ax4.scatter(max_lon, max_lat, c='gray', s=5, transform=plate)
+    
+    #next add the pod data so it sits on top
+    for k in range(len(locations)):
+        ax4.scatter(longitudes[k], latitudes[k],c=colors[k], s=20, transform=plate, label='{}'.format(locations[k]))
     
     #Calculate the buffer values
     x_buffer = .2 * (max(max_lon) - min(max_lon))
