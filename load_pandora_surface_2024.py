@@ -104,5 +104,5 @@ for k in range(len(locations)):
             data['datetime'] = data['datetime'].dt.round('S')
      
             #save out the final data
-            savePath = os.path.join(path,'{}_surface_extra_{}.csv'.format(locations[k],pollutants[n]))
+            savePath = os.path.join(path,'{}_surface_extra_{}.csv'.format(locations[k],pollutants))
             data.to_csv(savePath)
