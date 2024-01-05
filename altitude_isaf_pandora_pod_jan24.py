@@ -62,6 +62,8 @@ for n in range(len(locations)):
         #Convert the index to a DatetimeIndex
         pandora.index = pd.to_datetime(pandora.index)#rename index to datetime
         pandora = pandora.rename_axis('datetime')
+        #Filter so that the lowest quality data is NOT included
+        pandora = pandora.loc[pandora['quality_flag'] != 12]
         #get rid of any unnecessary columns
         pandora = pandora[['HCHO','temperature','top_height','max_vert_tropo']]
         #resample to minutely - since pod data will be minutely
@@ -86,6 +88,8 @@ for n in range(len(locations)):
         #Convert the index to a DatetimeIndex
         surfpandora.index = pd.to_datetime(surfpandora.index)#rename index to datetime
         surfpandora = surfpandora.rename_axis('datetime')
+        #Filter so that the lowest quality data is NOT included
+        surfpandora = surfpandora.loc[surfpandora['quality_flag'] != 12]
         #hold onto the HCHO data and relevant parameters only
         surfpandora = surfpandora[['HCHO','temperature','top_height','max_vert_tropo']]
         #resample to minutely - since pod data will be minutely
