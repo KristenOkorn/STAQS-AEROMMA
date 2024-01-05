@@ -1,14 +1,12 @@
-
-
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 28 13:02:17 2023
+Created on Fri Jan 05 13:02:17 2024
 
 Timeseries plot of Pandora surface estimates & INSTEP data - 1 plot per location
 All available dates combined
 All subplots in 1 figure
 
-Color by data flag
+Color by data flag & filter by data flag
 
 @author: okorn
 """
@@ -28,7 +26,7 @@ pods = ['YPODR9','YPODL6','YPODL1','YPODA2','YPODA7']
 #colors = ['b','g','r','c','m']
 
 #tropo or surface?
-measTyp = 'tropo'
+measTyp = 'surface'
 #pollutant?
 pollutant = 'NO2'
 #unit?
@@ -76,16 +74,19 @@ for n in range(len(locations)):
 
     #Create a custom color map for quality_flag
     color_map = {
-        0: 'green',
-        1: 'yellow',
-        2: 'red',
+        0: 'red',
+        1: 'orange',
+        2: 'green',
         10: 'blue',
-        11: 'brown',
+        11: 'cyan',
         12: 'black'}
     #-------------------------------------
     
     # Filter data within the specified date range
     filtered_pandora = pandora[(pandora.index >= datetime(2023, 6, 1)) & (pandora.index <= datetime(2023, 12, 1))]
+    
+    #Filter so that the lowest quality data is NOT included
+    #filtered_pandora = pandora.loc[pandora['quality_flag'] != 12]
     
     if IQR == 'yes':
         # Calculate the interquartile range (IQR)
@@ -104,7 +105,8 @@ for n in range(len(locations)):
     num = len(filtered_pandora)
     #add the new data to our scatterplot
     for value, data in pandora.groupby('quality_flag'):
-        ax[n].plot(filtered_pandora.index, filtered_pandora['Pandora {} {}'.format(measTyp, pollutant)], label=quality_flag_mapping[value], c=color_map[value])
+        subset = filtered_pandora[filtered_pandora['quality_flag'] == value]
+        ax[n].scatter(subset.index, subset['Pandora {} {}'.format(measTyp, pollutant)], label=quality_flag_mapping[value], c=color_map[value], marker='o')
         #ax[n].plot(filtered_pandora.index, filtered_pandora['Pandora {} {}'.format(measTyp, pollutant)],c=pandora['quality_flag_description'].map(color_map))
 
     #Add text in different colors
@@ -124,7 +126,12 @@ plt.subplots_adjust(hspace=0.5)  # You can adjust the value as needed
 fig.text(0.03, 0.5, 'Pandora {} {} ({})'.format(measTyp, pollutant, unit), va='center', rotation='vertical')
 
 # Adding legend
-fig.legend(labels=[f'{value}: {quality_flag_mapping[value]}' for value in color_map.keys()], title='Quality Flag', bbox_to_anchor=(1.05, 0.5), loc='center left')
+#fig.legend(labels=[f'{value}: {quality_flag_mapping[value]}' for value in color_map.keys()], title='Quality Flag', bbox_to_anchor=(1.05, 0.5), loc='center left')
+fig.legend(labels=[f'{value}: {quality_flag_mapping[value]}' for value in color_map.keys()], 
+           title='Quality Flag', 
+           bbox_to_anchor=(1.05, 0.5), 
+           loc='center left', 
+           handles=[plt.Line2D([0], [0], marker='o', color='w', label=f'{value}: {quality_flag_mapping[value]}', markerfacecolor=color_map[value], markersize=10) for value in color_map.keys()])
 
 #Display the plot
 plt.show()
