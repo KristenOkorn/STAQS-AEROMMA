@@ -64,21 +64,20 @@ for k in range(len(locations)):
             
             #get the correct columns - different for SJSU (NO2 only)
             if locations[k] == 'SJSU':
-                desired_cols = [0, 19, 20, 23, 38]
-                #datetime, NO2,tropo_uncert, quality flag, temp
-                #all -1 from how they're listed in data key - zero indexing
+                desired_cols = [0, 17, 23, 18, 38, 37,3]
+                #datetime, NO2, quality_flag, surf_uncertainty, temp, pressure, SZA
 
             else:
                 if pollutant == 'NO2':
                     layer = 68 #get the index that the layers start at
-                    desired_cols = [0, 14, 38, 61, 62, 64, 67] + list(range(layer, len(data.columns)))
-                    #datetime, temp, quality_flag, no2 tropo, tropo_uncert, max_vert_tropo, top_height, layer1+
+                    desired_cols = [0, 55, 38, 56, 14, 64, 67, 13, 3] + list(range(layer, len(data.columns)))
+                    #datetime, no2, quality_flag, surf_uncert, temp, max_vert_tropo, top_height, pressure, SZA,  layer1+
 
                 elif pollutant == 'HCHO':
                     layer = 53 #get the index that the layers start at
-                    desired_cols = [0, 14, 38, 48, 49, 51, 52] + list(range(layer, len(data.columns)))
-                    #datetime, temp, quality_flag, hcho, tropo_uncert, max_vert_tropo, top_height, layer1+
-                    
+                    desired_cols = [0, 44, 38, 45, 14, 51, 52, 13, 3] + list(range(layer, len(data.columns)))
+                    #datetime, hcho, quality_flag, surf_uncert, temp,  max_vert_tropo, top_height, pressure, SZA, layer1+
+                     
                 #make a list to hold the layer data names
                 layers = []
                 #get names for the layer columns
@@ -90,9 +89,9 @@ for k in range(len(locations)):
 
             #Rename the remaining columns
             if locations[k] == 'SJSU':
-                data.columns = ['datetime','{}'.format(pollutant),'uncertainty','temperaure']
+                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','uncertainty','temperature','pressure','SZA']
             else:
-                data.columns = ['datetime','temperature', 'quality_flag','{}'.format(pollutant),'uncertainty','max_vert_tropo','top_height'] + layers
+                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','surface_uncertainty','temperature','max_vert_tropo','top_height','pressure','SZA'] + layers
 
             #Remove the 'T' and 'Z' characters from the DateColumn
             data['datetime'] = data['datetime'].str.replace('T', '').str.replace('Z', '')
