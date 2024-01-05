@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 #loop through locations & pollutants
 locations = ['AFRC','Ames','Richmond','TMF','Whittier']
-pollutant = 'NO2'
+pollutant = 'O3'
 
 #load in the Pandora data
 #create a directory path for us to pull from / save to
@@ -64,24 +64,22 @@ for k in range(len(locations)):
             
             #get the correct columns - different for SJSU (NO2 only)
             if locations[k] == 'SJSU':
-                desired_cols = [0, 17, 23, 18, 38, 37,3]
-                #datetime, NO2, quality_flag, surf_uncertainty, temp, pressure, SZA
+                desired_cols = [0, 20, 24, 19, 39]
+                #datetime, NO2, quality_flag, surf_uncertainty, temp
 
             else:
                 if pollutant == 'NO2':
-                    layer = 68 #get the index that the layers start at
-                    desired_cols = [0, 55, 38, 56, 14, 64, 67, 13, 3] + list(range(layer, len(data.columns)))
-                    #datetime, no2, quality_flag, surf_uncert, temp, max_vert_tropo, top_height, pressure, SZA,  layer1+
+                    desired_cols = [0, 62, 39, 57, 15, 64, 65, 68, 13, 3] + list(range(69, len(data.columns)))
+                    #datetime, no2, quality_flag, surf_uncert, temp, max_horiz_tropo, max_vert_tropo, top_height, pressure, SZA, layer1+
 
                 elif pollutant == 'HCHO':
-                    layer = 53 #get the index that the layers start at
-                    desired_cols = [0, 44, 38, 45, 14, 51, 52, 13, 3] + list(range(layer, len(data.columns)))
-                    #datetime, hcho, quality_flag, surf_uncert, temp,  max_vert_tropo, top_height, pressure, SZA, layer1+
-                     
+                    desired_cols = [0, 49, 39, 57, 15, 64, 65, 68, 13, 3] + list(range(69, len(data.columns)))
+                    #datetime, hcho, quality_flag, surf_uncert, temp, max_horiz_tropo, max_vert_tropo, top_height, pressure, SZA, layer1+
+                    
                 #make a list to hold the layer data names
                 layers = []
                 #get names for the layer columns
-                for x in range(layer, len(data.columns)):
+                for x in range(69, len(data.columns)):
                     layers.append(f'layer_col{x}')
                     
             #Only keep the datetime & surface concentration columns
@@ -89,9 +87,9 @@ for k in range(len(locations)):
 
             #Rename the remaining columns
             if locations[k] == 'SJSU':
-                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','uncertainty','temperature','pressure','SZA']
+                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','surface_uncertainty','temperature']
             else:
-                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','surface_uncertainty','temperature','max_vert_tropo','top_height','pressure','SZA'] + layers
+                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','surface_uncertainty','temperature','max_horiz_tropo','max_vert_tropo','top_height','pressure','SZA'] + layers
 
             #Remove the 'T' and 'Z' characters from the DateColumn
             data['datetime'] = data['datetime'].str.replace('T', '').str.replace('Z', '')
