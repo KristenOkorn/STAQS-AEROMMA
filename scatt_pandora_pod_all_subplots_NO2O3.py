@@ -32,10 +32,10 @@ pods = ['YPODR9','YPODL6','YPODL1','YPODA2','YPODA7','YPODL9']
 colors = ['b','g','r','c','m','y']
 
 #tropo or surface?
-measTyp = 'tropo'
+measTyp = 'surface'
 
 #pandora unit?
-unit = 'mol/m2' #surface = mol/m3 #tropo = mol/m2
+unit = 'mol/m3' #surface = mol/m3 #tropo = mol/m2
 
 #use interquartile range for Pandora instead of full range?
 IQR = 'yes'
@@ -49,7 +49,7 @@ for n in range(len(locations)):
     #pandoraPath = 'C:\\Users\\okorn\\Documents\\INSTEP Pandora Comparisons\\Pandora Surface Concentrations'
     pandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
     #get the filename for pandora
-    pandorafilename = "{}_{}_NO2.csv".format(locations[n],measTyp)
+    pandorafilename = "{}_{}_extra_NO2.csv".format(locations[n],measTyp)
     #join the path and filename
     pandorafilepath = os.path.join(pandoraPath, pandorafilename)
     pandora = pd.read_csv(pandorafilepath,index_col=1)
@@ -58,6 +58,8 @@ for n in range(len(locations)):
     #Convert the index to a DatetimeIndex
     pandora.index = pd.to_datetime(pandora.index)#rename index to datetime
     pandora = pandora.rename_axis('datetime')
+    #Filter so that the lowest quality data is NOT included
+    pandora = pandora.loc[pandora['quality_flag'] != 12]
     #get rid of any blank columns
     pandora = pandora[['NO2']]
     #resample to minutely - since pod data will be minutely
@@ -119,12 +121,12 @@ for n in range(len(locations)):
     ax4[n].plot([min(merge['INSTEP O3']), max(merge['INSTEP O3'])], [min(merge['Pandora {} NO2'.format(measTyp)]), max(merge['Pandora {} NO2'.format(measTyp)])], color='black', linestyle='--', label='1:1 Line')
 
 #Increase vertical space between subplots
-plt.subplots_adjust(hspace=0.5)  # You can adjust the value as needed
+plt.subplots_adjust(hspace=0.2)  # You can adjust the value as needed
 #Single y-axis label for all subplots
 fig4.text(0.03, 0.5, 'Pandora {} NO2 ({})'.format(measTyp,unit), va='center', rotation='vertical')
 
 #Common x-axis label for all subplots
-fig4.text(0.5, 0.09, 'INSTEP {} O3 (ppb)'.format(measTyp), ha='center')
+fig4.text(0.5, 0.1, 'INSTEP {} O3 (ppb)'.format(measTyp), ha='center')
 
 
 #Display the plot
