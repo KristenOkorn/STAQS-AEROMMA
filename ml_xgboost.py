@@ -73,7 +73,7 @@ for n in range(len(pollutants)):
         x.columns = x.columns.str.strip()
         
         #now for reformatting - get our 'y' data alone
-        y = pd.DataFrame(x.pop('{}'.format(pollutants[n])))
+        y = pd.DataFrame(x.pop('Y_hatfield'))
         
         #Now do our test-train split
         X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=.2)
@@ -100,16 +100,16 @@ for n in range(len(pollutants)):
         importance_labels = {label: importance for label, importance in zip(x.columns, importances)}
         
         #generate statistics for test data
-        r2 = r2_score(y_test['{}'.format(pollutants[n])], y_hat_test)
-        rmse = np.sqrt(mean_squared_error(y_test['{}'.format(pollutants[n])], y_hat_test))
-        mbe = np.mean(y_hat_test - y_test['{}'.format(pollutants[n])])
+        r2 = r2_score(y_test['Y_hatfield'], y_hat_test)
+        rmse = np.sqrt(mean_squared_error(y_test['Y_hatfield'], y_hat_test))
+        mbe = np.mean(y_hat_test - y_test['Y_hatfield'])
         #store our results in a dictionary
         stats_test = {'R2': r2, 'RMSE': rmse, 'MBE': mbe}
         
         #generate statistics for train data
-        r2 = r2_score(y_train['{}'.format(pollutants[n])], y_hat_train)
-        rmse = np.sqrt(mean_squared_error(y_train['{}'.format(pollutants[n])], y_hat_train))
-        mbe = np.mean(y_hat_train - y_train['{}'.format(pollutants[n])])
+        r2 = r2_score(y_train['Y_hatfield'], y_hat_train)
+        rmse = np.sqrt(mean_squared_error(y_train['Y_hatfield'], y_hat_train))
+        mbe = np.mean(y_hat_train - y_train['Y_hatfield'])
         #store our results in a dictionary
         stats_train = {'R2': r2, 'RMSE': rmse, 'MBE': mbe}
         

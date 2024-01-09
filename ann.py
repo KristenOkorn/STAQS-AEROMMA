@@ -73,7 +73,7 @@ for n in range(len(pollutants)):
         x.columns = x.columns.str.strip()
         
         #now for reformatting - get our 'y' data alone
-        y = pd.DataFrame(x.pop('{}'.format(pollutants[n])))
+        y = pd.DataFrame(x.pop('Y_hatfield'))
         
         #Now do our test-train split
         X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=.2)
@@ -141,8 +141,8 @@ for n in range(len(pollutants)):
         #-------------------------------------------------------
         
         #generate statistics for test data
-        r2 = r2_score(y_test['{}'.format(pollutants[n])], y_hat_test)
-        rmse = np.sqrt(mean_squared_error(y_test['{}'.format(pollutants[n])], y_hat_test))
+        r2 = r2_score(y_test['Y_hatfield'], y_hat_test)
+        rmse = np.sqrt(mean_squared_error(y_test['Y_hatfield'], y_hat_test))
         #Convert the Series to a NumPy array
         y_test_array = y_test.values
         mbe = np.mean(y_hat_test - y_test_array)
@@ -155,8 +155,8 @@ for n in range(len(pollutants)):
         X_train['Y'] = y
         
         #generate statistics for train data
-        r2 = r2_score(y_train['{}'.format(pollutants[n])], y_hat_train)
-        rmse = np.sqrt(mean_squared_error(y_train['{}'.format(pollutants[n])], y_hat_train))
+        r2 = r2_score(y_train['Y_hatfield'], y_hat_train)
+        rmse = np.sqrt(mean_squared_error(y_train['Y_hatfield'], y_hat_train))
         #Convert the Series to a NumPy array
         y_train_array = y_train.values
         mbe = np.mean(y_hat_train - y_train_array)
@@ -168,7 +168,7 @@ for n in range(len(pollutants)):
         #save all of our results to file
         
         #Name a new subfolder
-        subfolder_name = 'Outputs_{}_{}_ann_sgd'.format(locations[k],pollutants[n])
+        subfolder_name = 'Outputs_{}_ann_sgd'.format(pollutants[n])
         #Create the subfolder path
         subfolder_path = os.path.join(path, subfolder_name)
         #Create the subfolder
