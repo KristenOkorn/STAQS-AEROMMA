@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
+from joblib import dump, load
 
 #list of pollutants to model
 pollutants = ['O3','HCHO']
@@ -150,3 +151,7 @@ for n in range(len(pollutants)):
         # Convert the dictionary to a DataFrame
         stats_test = pd.DataFrame.from_dict(stats_test, orient='index', columns=['Value'])
         stats_test.to_csv(savePath)
+        
+        #Save the rf model itself
+        savePath = os.path.join(subfolder_path,'rfmodel_{}_{}.joblib'.format(locations[k],pollutants[n]))
+        dump(rf_regressor, savePath)
