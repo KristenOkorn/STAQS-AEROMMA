@@ -153,5 +153,5 @@ for n in range(len(pollutants)):
         stats_test.to_csv(savePath)
         
         #Save the rf model itself
-        savePath = os.path.join(subfolder_path,'rfmodel_{}_{}.joblib'.format(locations[k],pollutants[n]))
+        savePath = os.path.join(subfolder_path,'{}_rfmodel_{}.joblib'.format(locations[k],pollutants[n]))
         dump(rf_regressor, savePath)
