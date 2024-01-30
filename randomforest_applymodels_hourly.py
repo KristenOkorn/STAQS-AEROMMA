@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 16 19:52:07 2024
+Created on Wed Jan 17 13:18:59 2024
 
 Apply the random forest to other Pandora sites
-Seeing how transferrable the algorithms 
-Add zscoring of each input to help transferability
+Seeing how transferrable the algorithms are
+HOURLY
 
 @author: okorn
 """
@@ -20,7 +20,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 from joblib import dump, load
-from scipy.stats import zscore
 
 #list of pollutants to model
 pollutants = ['O3']
@@ -34,9 +33,9 @@ pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1']
 for n in range(len(pollutants)):
     for k in range(len(locations)):
         #first load the model for x location
-        mpath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\Outputs_{}_rf_zscore'.format(pollutants[n])
+        mpath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\Outputs_{}_rf'.format(pollutants[n])
         #load the model in
-        modelName = '{}_rfmodel_z_{}.joblib'.format(locations[k],pollutants[n])
+        modelName = '{}_rfmodel_{}.joblib'.format(locations[k],pollutants[n])
         #combine path and filename
         modelPath = os.path.join(mpath, modelName)
         #load the model
@@ -57,8 +56,8 @@ for n in range(len(pollutants)):
             ann_inputs = pd.read_csv(filepath,index_col=1)
             #Convert the index to a DatetimeIndex and set the nanosecond values to zero
             ann_inputs.index = pd.to_datetime(ann_inputs.index)
-            #resample to minutely - since pod data will be minutely
-            ann_inputs = ann_inputs.resample('T').mean()
+            #resample to HOURLY
+            ann_inputs = ann_inputs.resample('H').mean()
             #Filter so that the lowest quality data is NOT included
             ann_inputs = ann_inputs.loc[ann_inputs['quality_flag'] != 12]
             #get rid of any unnecessary columns - will vary by pollutant
@@ -66,7 +65,7 @@ for n in range(len(pollutants)):
                 ann_inputs = ann_inputs[['{}'.format(pollutants[n]),'temperature','pressure','SZA']]
             elif pollutants[n] == 'O3':
                 ann_inputs = ann_inputs[['SZA','pressure','O3','TEff','O3 AMF','Atmos Variability']]
-            
+
             #-------------------------------------
             #now load the "ground truth" pod data
             filename = "{}_{}.csv".format(pods[j],pollutants[n])
@@ -77,6 +76,8 @@ for n in range(len(pollutants)):
             pod.index = pd.to_datetime(pod.index, format="%d-%b-%Y %H:%M:%S")
             #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
             pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
+            #resample to HOURLY
+            pod = pod.resample('H').mean()
             
             #-------------------------------------
             #combine our datasets - both already in local time
@@ -86,9 +87,6 @@ for n in range(len(pollutants)):
     
             #now for reformatting - get our 'y' data alone
             y = pd.DataFrame(x.pop('Y_hatfield'))
-            
-            #Calculate z-scores for every column
-            x = x.apply(zscore)
    
             #-------------------------------------
             #apply the model
@@ -104,7 +102,7 @@ for n in range(len(pollutants)):
             stats_list.append(stats)
         
         #save our results to file
-        savePath = os.path.join(mpath,'{}_stats_application_zscore_{}.csv'.format(locations[k],pollutants[n]))
+        savePath = os.path.join(mpath,'{}_stats_application_{}_hourly.csv'.format(locations[k],pollutants[n]))
         #Convert the list to a DataFrame
-        stats_list = pd.DataFrame(stats_list)
-        stats_list.to_csv(savePath)
+        stats_list_hourly = pd.DataFrame(stats_list)
+        stats_list_hourly.to_csv(savePath)

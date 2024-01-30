@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 16 19:52:07 2024
+Created on Tue Jan 16 18:23:35 2024
 
-Apply the random forest to other Pandora sites
-Seeing how transferrable the algorithms 
-Add zscoring of each input to help transferability
+Apply the ALL CA random forest to individual Pandora sites
+Seeing how transferrable the new algorithm is
 
 @author: okorn
 """
@@ -20,7 +19,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 from joblib import dump, load
-from scipy.stats import zscore
 
 #list of pollutants to model
 pollutants = ['O3']
@@ -32,11 +30,10 @@ locations = ['AFRC','TMF','Whittier','Ames','Richmond']
 pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1']
 
 for n in range(len(pollutants)):
-    for k in range(len(locations)):
-        #first load the model for x location
-        mpath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\Outputs_{}_rf_zscore'.format(pollutants[n])
+        #first load the ALL CA model
+        mpath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\Outputs_{}_rf_allCA'.format(pollutants[n])
         #load the model in
-        modelName = '{}_rfmodel_z_{}.joblib'.format(locations[k],pollutants[n])
+        modelName = 'allCA_rfmodel_{}.joblib'.format(pollutants[n])
         #combine path and filename
         modelPath = os.path.join(mpath, modelName)
         #load the model
@@ -46,7 +43,7 @@ for n in range(len(pollutants)):
         stats_list = []
         
         #-------------------------------------
-        #second location loop to load the application data
+        #now location loop to load the application data
         for j in range(len(locations)):
             #create a pandora path for us to pull from / save to
             path = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations'
@@ -66,7 +63,7 @@ for n in range(len(pollutants)):
                 ann_inputs = ann_inputs[['{}'.format(pollutants[n]),'temperature','pressure','SZA']]
             elif pollutants[n] == 'O3':
                 ann_inputs = ann_inputs[['SZA','pressure','O3','TEff','O3 AMF','Atmos Variability']]
-            
+
             #-------------------------------------
             #now load the "ground truth" pod data
             filename = "{}_{}.csv".format(pods[j],pollutants[n])
@@ -86,9 +83,6 @@ for n in range(len(pollutants)):
     
             #now for reformatting - get our 'y' data alone
             y = pd.DataFrame(x.pop('Y_hatfield'))
-            
-            #Calculate z-scores for every column
-            x = x.apply(zscore)
    
             #-------------------------------------
             #apply the model
@@ -104,7 +98,7 @@ for n in range(len(pollutants)):
             stats_list.append(stats)
         
         #save our results to file
-        savePath = os.path.join(mpath,'{}_stats_application_zscore_{}.csv'.format(locations[k],pollutants[n]))
+        savePath = os.path.join(mpath,'allCA_stats_application_{}.csv'.format(pollutants[n]))
         #Convert the list to a DataFrame
         stats_list = pd.DataFrame(stats_list)
         stats_list.to_csv(savePath)
