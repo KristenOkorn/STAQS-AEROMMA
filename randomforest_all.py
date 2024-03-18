@@ -15,11 +15,14 @@ import numpy as np
 import seaborn as sns
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import BaggingRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 from joblib import dump, load
 from sklearn.preprocessing import StandardScaler
 
+#use bagging?
+bagging = 'yes'
 
 #list of pollutants to model
 pollutants = ['O3']
@@ -27,8 +30,8 @@ pollutants = ['O3']
 dtype = ['column']
 
 #list of pods to model
-locations = ['AFRC','TMF','Whittier','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville']
-pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9']
+locations = ['AFRC','TMF','Whittier','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville','AldineTX','LibertyTX','HoustonTX']
+pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9','HoustonAldine','LibertySamHoustonLibrary','UHMoodyTower']
 
 #create a directory path for us to pull from / save to
 path = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\All O3 Data Combined'
@@ -46,8 +49,8 @@ for n in range(len(pollutants)):
             ann_inputs = pd.read_csv(filepath,index_col=1)
         #Convert the index to a DatetimeIndex and set the nanosecond values to zero
         ann_inputs.index = pd.to_datetime(ann_inputs.index)
-        #resample to minutely - since pod data will be minutely
-        ann_inputs = ann_inputs.resample('T').mean()
+        #resample to hourly - what we have for TX
+        ann_inputs = ann_inputs.resample('H').mean()
         #Filter so that the lowest quality data is NOT included
         if locations[k] != 'BAO' and locations[k] != 'NREL' and locations[k] != 'Platteville':
             ann_inputs = ann_inputs.loc[ann_inputs['quality_flag'] != 12]
@@ -81,6 +84,8 @@ for n in range(len(pollutants)):
             desired_order = ['SZA', 'pressure', 'O3', 'TEff', 'O3 AMF', 'Atmos Variability']
             #re-order the columns
             ann_inputs = ann_inputs[desired_order]
+            #remove any nans from retime
+            ann_inputs = ann_inputs.dropna()
 
         #-------------------------------------
         #now load the matching pod data
@@ -99,7 +104,7 @@ for n in range(len(pollutants)):
             pod.index = pd.to_datetime(pod.index, format="%d-%b-%Y %H:%M:%S")
             #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
             pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
-            #if FRAPPE, need to change the column names
+            #if FRAPPE or Texas, need to change the column names
             if locations[k] == 'BAO' or locations[k] == 'NREL' or locations[k] == 'Platteville':
                 pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
         #if it's a non-pod, need to clean the data more
@@ -115,6 +120,7 @@ for n in range(len(pollutants)):
             pod.rename(columns={'O3_1m,ppbv':'Y_hatfield'}, inplace=True)
             #remove rows containing -999
             pod = pod[pod['Y_hatfield'] != -999]
+            
         elif pods[k][0] == 'W': #wbb, slc
             #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
             pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
@@ -124,8 +130,21 @@ for n in range(len(pollutants)):
             pod.rename(columns={'ozone_concentration_set_1':'Y_hatfield'}, inplace=True)
             #remove rows containing -999
             pod = pod[pod['Y_hatfield'] != -999]
-
-
+            #make sure our o3 data is numbers, not strings
+            pod['Y_hatfield'] = pod['Y_hatfield'].astype(float)
+            
+        elif 'TX' in locations[k]: #texas data
+            pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
+            pod.index = pd.to_datetime(pod.index, format="%Y-%m-%d %H:%M:%S")
+            #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
+            pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
+            pod = pod.dropna()
+        
+        #remove any nans before retime
+        pod = pod.dropna()
+        #resample to hourly - what we have for TX
+        pod = pod.resample('H').mean()
+        
         #combine our datasets - both already in local time
         x=pd.merge(ann_inputs,pod,left_index=True,right_index=True)
         #remove NaNs
@@ -148,6 +167,10 @@ for n in range(len(pollutants)):
         #Create a Random Forest regressor object
         rf_regressor = RandomForestRegressor()
         
+        if bagging == 'yes':
+            #Create a Bagging Regressor with the base Random Forest Regressor
+            rf_regressor = BaggingRegressor(rf_regressor, random_state=42)
+
         #Train the Random Forest regressor on the training data
         rf_regressor.fit(X_train_scaled, y_train)
         
@@ -161,12 +184,14 @@ for n in range(len(pollutants)):
         X_train['Y'] = y_train
         X_test['Y'] = y_test
         
-        #Get the feature importances
-        importances = rf_regressor.feature_importances_
+        if bagging == 'no':
+            #Get the feature importances
+            importances = rf_regressor.feature_importances_
 
-        #Create a dictionary of importance labels with their corresponding input labels
-        importance_labels = {label: importance for label, importance in zip(x.columns, importances)}
-        
+            #Create a dictionary of importance labels with their corresponding input labels
+            importance_labels = {label: importance for label, importance in zip(x.columns, importances)}
+            
+            
         #generate statistics for test data
         r2 = r2_score(y_test['Y_hatfield'], y_hat_test)
         rmse = np.sqrt(mean_squared_error(y_test['Y_hatfield'], y_hat_test))
@@ -183,8 +208,13 @@ for n in range(len(pollutants)):
         
         #save all of our results to file
         
-        #Name a new subfolder
-        subfolder_name = 'Outputs_{}_rf_all'.format(pollutants[n])
+        #save all of our results to file
+        if bagging == 'yes':    
+            #Name a new subfolder
+            subfolder_name = 'Outputs_{}_rf_all_bag'.format(pollutants[n])
+        else:
+            subfolder_name = 'Outputs_{}_rf_all'.format(pollutants[n])
+        
         #Create the subfolder path
         subfolder_path = os.path.join(path, subfolder_name)
         #Create the subfolder
@@ -200,11 +230,12 @@ for n in range(len(pollutants)):
         savePath = os.path.join(subfolder_path,'{}_X_test_{}.csv'.format(locations[k],pollutants[n]))
         X_test.to_csv(savePath)
         
-        #Importance labels
-        savePath = os.path.join(subfolder_path,'{}_Factor_importance_{}.csv'.format(locations[k],pollutants[n]))
-        # Convert the dictionary to a DataFrame
-        importance_labels = pd.DataFrame.from_dict(importance_labels, orient='index', columns=['Value'])
-        importance_labels.to_csv(savePath)
+        if bagging == 'no':
+            #Importance labels
+            savePath = os.path.join(subfolder_path,'allCACO_Factor_importance_{}.csv'.format(pollutants[n]))
+            # Convert the dictionary to a DataFrame
+            importance_labels = pd.DataFrame.from_dict(importance_labels, orient='index', columns=['Value'])
+            importance_labels.to_csv(savePath)
         
         #Stats_train
         savePath = os.path.join(subfolder_path,'{}_stats_train_{}.csv'.format(locations[k],pollutants[n]))
