@@ -36,7 +36,10 @@ for k in range(len(locations)):
 
             # Convert to datetime format
             texas['datetime'] = pd.to_datetime(texas['datetime'])
-
+            
+            #convert to UTC (to match pandora)
+            texas['datetime'] = texas['datetime'] - timedelta(hours=6)
+            
             #re-order to ascending order
             texas = texas.sort_values(by='datetime')
 
