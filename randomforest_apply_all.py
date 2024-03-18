@@ -24,15 +24,12 @@ from sklearn.preprocessing import StandardScaler
 #list of pollutants to model
 pollutants = ['O3']
 
-#list of location ranges
-state = ['CA','CO']
-
 #was bagging used?
-bagging = 'no'
+bagging = 'yes'
 
 #list of pods to model
-locations = ['AFRC','TMF','Whittier','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville']
-pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9']
+locations = ['AFRC','TMF','Whittier','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville','AldineTX','LibertyTX','HoustonTX']
+pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9','HoustonAldine','LibertySamHoustonLibrary','UHMoodyTower']
 
 #create a directory path for us to pull from / save to
 path = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\All O3 Data Combined'
@@ -73,7 +70,7 @@ for n in range(len(pollutants)):
             #Convert the index to a DatetimeIndex and set the nanosecond values to zero
             ann_inputs.index = pd.to_datetime(ann_inputs.index)
             #resample to minutely - since pod data will be minutely
-            ann_inputs = ann_inputs.resample('T').mean()
+            ann_inputs = ann_inputs.resample('H').mean()
             #Filter so that the lowest quality data is NOT included
             if locations[k] != 'BAO' and locations[k] != 'NREL' and locations[k] != 'Platteville':
                 ann_inputs = ann_inputs.loc[ann_inputs['quality_flag'] != 12]
@@ -107,12 +104,15 @@ for n in range(len(pollutants)):
                 desired_order = ['SZA', 'pressure', 'O3', 'TEff', 'O3 AMF', 'Atmos Variability']
                 #re-order the columns
                 ann_inputs = ann_inputs[desired_order]
-
+                #remove any nans from retime
+                ann_inputs = ann_inputs.dropna()
+                
             #-------------------------------------
             #now load the matching pod data
             filename = "{}_{}.csv".format(pods[k],pollutants[n])
             #combine the file and the path
             filepath = os.path.join(path, filename)
+            
             if pods[k][0] == 'W': #wbb, slc
                 pod = pd.read_csv(filepath,skiprows=10,index_col=1)
                 #delete the first row - holds unit info
@@ -120,6 +120,7 @@ for n in range(len(pollutants)):
             else:
                 #all others take the same format
                 pod = pd.read_csv(filepath,index_col=0)  
+            
             #Convert Index to DatetimeIndex
             if pods[k][0] == 'Y':
                 pod.index = pd.to_datetime(pod.index, format="%d-%b-%Y %H:%M:%S")
@@ -128,6 +129,7 @@ for n in range(len(pollutants)):
                 #if FRAPPE, need to change the column names
                 if locations[k] == 'BAO' or locations[k] == 'NREL' or locations[k] == 'Platteville':
                     pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
+            
             #if it's a non-pod, need to clean the data more
             elif pods[k][0] == 't': #topaz, noaa
                 #need different format for non-pods
@@ -141,6 +143,7 @@ for n in range(len(pollutants)):
                 pod.rename(columns={'O3_1m,ppbv':'Y_hatfield'}, inplace=True)
                 #remove rows containing -999
                 pod = pod[pod['Y_hatfield'] != -999]
+            
             elif pods[k][0] == 'W': #wbb, slc
                 #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
                 pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
@@ -150,8 +153,23 @@ for n in range(len(pollutants)):
                 pod.rename(columns={'ozone_concentration_set_1':'Y_hatfield'}, inplace=True)
                 #remove rows containing -999
                 pod = pod[pod['Y_hatfield'] != -999]
+                #make sure our o3 data is numbers, not strings
+                pod['Y_hatfield'] = pod['Y_hatfield'].astype(float)
+                
+            
+            elif 'TX' in locations[k]: #texas data
+                pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
+                pod.index = pd.to_datetime(pod.index, format="%Y-%m-%d %H:%M:%S")
+                #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
+                pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
+                pod = pod.dropna()
             
             #-------------------------------------
+            #remove any nans before retime
+            pod = pod.dropna()
+            #resample to hourly - what we have for TX
+            pod = pod.resample('H').mean()
+            
             #combine our datasets - both already in local time
             x=pd.merge(ann_inputs,pod,left_index=True,right_index=True)
             #remove NaNs
