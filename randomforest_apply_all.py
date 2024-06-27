@@ -28,8 +28,8 @@ pollutants = ['O3']
 bagging = 'yes'
 
 #list of pods to model
-locations = ['AFRC','TMF','Whittier','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville','AldineTX','LibertyTX','HoustonTX']
-pods = ['YPODR9','YPODA2','YPODA7','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9','HoustonAldine','LibertySamHoustonLibrary','UHMoodyTower']
+locations = ['Bayonne','Bristol','Bronx','CapeElizabeth','Cornwall','EastProvidence','Londonderry','Lynn','MadisonCT','NewBrunswick','NewHaven','OldField','Philadelphia','Pittsburgh','Queens','WashingtonDC','Westport','AFRC','TMF','Ames','Richmond','CSUS','NOAA','SLC','BAO','NREL','Platteville','AldineTX','LibertyTX','HoustonTX']
+pods = ['EPA_Bayonne','EPA_Bristol','EPA_Bronx','EPA_CapeElizabeth','EPA_Cornwall','EPA_EastProvidence','EPA_Londonderry','EPA_Lynn','EPA_MadisonCT','EPA_NewBrunswick','EPA_NewHaven','EPA_OldField','EPA_Philadelphia','EPA_Pittsburgh','EPA_Queens','EPA_WashingtonDC','EPA_Westport','YPODR9','YPODA2','YPODL6','YPODL1','YPODL2','topaz','WBB','YPODD4','YPODF1','YPODF9','HoustonAldine','LibertySamHoustonLibrary','UHMoodyTower']
 
 #create a directory path for us to pull from / save to
 path = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Modeling Surface Concentrations\\All O3 Data Combined'
@@ -69,6 +69,10 @@ for n in range(len(pollutants)):
                 ann_inputs = pd.read_csv(filepath,index_col=1)
             #Convert the index to a DatetimeIndex and set the nanosecond values to zero
             ann_inputs.index = pd.to_datetime(ann_inputs.index)
+            #remove any empty/placeholder times
+            if locations[k] != 'BAO' and locations[k] != 'NREL' and locations[k] != 'Platteville': 
+                ann_inputs = ann_inputs[ann_inputs['Atmos Variability'] != 999]
+            ann_inputs = ann_inputs[ann_inputs['O3'] != -9e99]
             #resample to minutely - since pod data will be minutely
             ann_inputs = ann_inputs.resample('H').mean()
             #Filter so that the lowest quality data is NOT included
@@ -106,14 +110,17 @@ for n in range(len(pollutants)):
                 ann_inputs = ann_inputs[desired_order]
                 #remove any nans from retime
                 ann_inputs = ann_inputs.dropna()
-                
+            
+            #data cleaning - remove negatives from the O3 column
+            ann_inputs.loc[ann_inputs['O3'] < 0, 'O3'] = np.nan
+            
             #-------------------------------------
             #now load the matching pod data
             filename = "{}_{}.csv".format(pods[k],pollutants[n])
             #combine the file and the path
             filepath = os.path.join(path, filename)
             
-            if pods[k][0] == 'W': #wbb, slc
+            if 'WBB' in pods[k]: #wbb, slc
                 pod = pd.read_csv(filepath,skiprows=10,index_col=1)
                 #delete the first row - holds unit info
                 pod = pod.drop(pod.index[0])
@@ -122,7 +129,7 @@ for n in range(len(pollutants)):
                 pod = pd.read_csv(filepath,index_col=0)  
             
             #Convert Index to DatetimeIndex
-            if pods[k][0] == 'Y':
+            if 'YPOD' in pods[k]:
                 pod.index = pd.to_datetime(pod.index, format="%d-%b-%Y %H:%M:%S")
                 #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
                 pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
@@ -131,7 +138,7 @@ for n in range(len(pollutants)):
                     pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
             
             #if it's a non-pod, need to clean the data more
-            elif pods[k][0] == 't': #topaz, noaa
+            elif 'topaz' in pods[k]: #topaz, noaa
                 #need different format for non-pods
                 pod.index = pd.to_datetime(pod.index, format="%Y-%m-%d %H:%M:%S")
                 #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
@@ -144,7 +151,7 @@ for n in range(len(pollutants)):
                 #remove rows containing -999
                 pod = pod[pod['Y_hatfield'] != -999]
             
-            elif pods[k][0] == 'W': #wbb, slc
+            elif 'WBB' in pods[k]: #wbb, slc
                 #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
                 pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
                 #Drop all columns except the specified one
@@ -157,12 +164,16 @@ for n in range(len(pollutants)):
                 pod['Y_hatfield'] = pod['Y_hatfield'].astype(float)
                 
             
-            elif 'TX' in locations[k]: #texas data
+            elif 'TX' in pods[k]: #texas data
                 pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
                 pod.index = pd.to_datetime(pod.index, format="%Y-%m-%d %H:%M:%S")
                 #Convert the modified index to a DatetimeIndex and set the nanosecond values to zero
                 pod.index = pd.to_datetime(pod.index.values.astype('datetime64[s]'), errors='coerce')
                 pod = pod.dropna()
+                
+            elif 'EPA' in pods[k]: #EPA data
+                pod.rename(columns={'O3':'Y_hatfield'}, inplace=True)
+                pod.index = pd.to_datetime(pod.index)
             
             #-------------------------------------
             #remove any nans before retime
