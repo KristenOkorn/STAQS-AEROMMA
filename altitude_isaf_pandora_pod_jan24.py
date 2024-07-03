@@ -22,8 +22,8 @@ from datetime import datetime
 from matplotlib.lines import Line2D
 
 #get the relevant location data for each
-locations = ['AFRC','TMF','Whittier','Caltech']
-pods = ['YPODR9','YPODA2','YPODA7','YPODG5']
+locations = ['TMF','Whittier','Caltech','Redlands'] #'AFRC'
+pods = ['YPODA2','YPODA7','YPODG5','YPODL5'] #'YPODR9'
 
 #pollutant?
 pollutant = 'HCHO'
@@ -65,15 +65,15 @@ for n in range(len(locations)):
         #Filter so that the lowest quality data is NOT included
         pandora = pandora.loc[pandora['quality_flag'] != 12]
         #get rid of any unnecessary columns
-        pandora = pandora[['HCHO','temperature','top_height','max_vert_tropo']]
+        pandora = pandora[['HCHO','temperature','top_height','max_horiz','max_vert_tropo']]
         #resample to minutely - since pod data will be minutely
         pandora = pandora.resample('T').mean()
         #Change the pollutant column name
         pandora.columns.values[0] = 'Pandora Tropo HCHO'
         #remove any negatives
         pandora = pandora[pandora.iloc[:, 0] >= 0]
-        #convert to ppb
-        pandora['Pandora Tropo HCHO'] = pandora['Pandora Tropo HCHO']*(1/pandora['max_vert_tropo'])*0.08206*pandora['temperature']*(10**(-9))
+        #convert from mol/m2 to ppb
+        pandora['Pandora Tropo HCHO'] = pandora['Pandora Tropo HCHO']*(pandora['top_height'])*0.08206*pandora['temperature']*(10**(9))/1000
     #-------------------------------------
     #next load in the pandora surface csv's - skip for caltech & redlands
     if locations[n] != 'Redlands' and locations[n] != 'Caltech':
@@ -99,11 +99,11 @@ for n in range(len(locations)):
         #remove any negatives
         surfpandora = surfpandora[surfpandora.iloc[:, 0] >= 0]
         #convert mol/m3 to ppb
-        surfpandora['Pandora Surface HCHO'] = surfpandora['Pandora Surface HCHO']*0.08206*surfpandora['temperature']*(10**(-9))
+        surfpandora['Pandora Surface HCHO'] = surfpandora['Pandora Surface HCHO']*0.08206*surfpandora['temperature']*(10**(9))/1000
     #-------------------------------------
     #now load in the matching pod data - HCHO
     #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
-    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\HCHO\\HCHO more fall data - fix cal'
+    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
     #get the filename for the pod
     podfilename = "{}_HCHO.csv".format(pods[n])
     #read in the first worksheet from the workbook myexcel.xlsx
@@ -119,6 +119,10 @@ for n in range(len(locations)):
     pod.columns.values[0] = 'INSTEP HCHO'
     #add a column for altitude - will all be 0
     pod['INSTEP altitude'] = 0
+    
+    #get the data into UTC (from PDT)
+    if locations[n] != 'Redlands':
+        pod.index += pd.to_timedelta(7, unit='h')
     #-------------------------------------
     #merge our dataframes
     merge = pd.merge(isaf,pod,left_index=True, right_index=True)
@@ -211,12 +215,12 @@ for n in range(len(locations)):
     plt.show()
 
     #save to a different folder so we don't confuse the script on the next iteration
-    Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\HCHO Plots\\'
-    #Create the full path with the figure name
+    Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF HCHO Plots\\'
     #Create the full path with the figure name
     if IQR == 'yes':
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR_maxverttropo'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR_topheight'.format(locations[n]))
     else:
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_maxverttropo'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}_topheight'.format(locations[n]))
     #Save the figure to a filepath
     fig.savefig(savePath)
+    #not saving out correctly as of 5/28/24
