@@ -17,8 +17,8 @@ from matplotlib.lines import Line2D
 import matplotlib.dates as mdates
 
 #get the relevant location data for each
-locations = ['Caltech','AFRC']
-pods = ['YPODG5','YPODR9'] 
+locations = ['TMF','Caltech','Redlands','Whittier','AFRC']#'Whittier','AFRC'
+pods = ['YPODA2','YPODG5','YPODL5','YPODA7','YPODR9']#
 
 #pollutant?
 pollutant = 'CH4'
@@ -66,21 +66,22 @@ for n in range(len(locations)):
     pod['INSTEP altitude'] = 0
     
     #-------------------------------------
-    #now load in the matching TCCON data
-    tcconPath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\TCCON'
-    #get the filename for the tccon data
-    tcconfilename = "{}_TCCON.csv".format(locations[n])
-    #read in the first worksheet from the workbook myexcel.xlsx
-    tcconfilepath = os.path.join(tcconPath, tcconfilename)
-    tccon = pd.read_csv(tcconfilepath,index_col=0)  
-    #keep just the column we need
-    tccon = tccon['{}'.format(pollutant)].to_frame()
-    #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-    tccon.index = pd.to_datetime(tccon.index,format="%Y-%m-%d %H:%M:%S",errors='coerce')
-    #resample to minutely
-    tccon = tccon.resample('T').median()
-    #Change the pollutant column name
-    tccon.rename(columns={'{}'.format(pollutant): 'TCCON {}'.format(pollutant)}, inplace=True)
+    #now load in the matching TCCON data - if a tccon site
+    if locations[n] == 'Caltech' or locations[n] == 'AFRC':
+        tcconPath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\TCCON'
+        #get the filename for the tccon data
+        tcconfilename = "{}_TCCON.csv".format(locations[n])
+        #read in the first worksheet from the workbook myexcel.xlsx
+        tcconfilepath = os.path.join(tcconPath, tcconfilename)
+        tccon = pd.read_csv(tcconfilepath,index_col=0)  
+        #keep just the column we need
+        tccon = tccon['{}'.format(pollutant)].to_frame()
+        #Convert the index to a DatetimeIndex and set the nanosecond values to zero
+        tccon.index = pd.to_datetime(tccon.index,format="%Y-%m-%d %H:%M:%S",errors='coerce')
+        #resample to minutely
+        tccon = tccon.resample('T').median()
+        #Change the pollutant column name
+        tccon.rename(columns={'{}'.format(pollutant): 'TCCON {}'.format(pollutant)}, inplace=True)
 
     #-------------------------------------
     #initialize figure - one plot for each location
@@ -91,8 +92,9 @@ for n in range(len(locations)):
     
     #then plot the instep data
     axs.plot(pod.index, pod['INSTEP {}'.format(pollutant)], label='INSTEP', color='red')
-    #also plot the tccon data
-    axs.plot(tccon.index, tccon['TCCON {}'.format(pollutant)], label='TCCON', color='purple')
+    #also plot the tccon data if a tccon site
+    if locations[n] == 'Caltech' or locations[n] == 'AFRC':
+        axs.plot(tccon.index, tccon['TCCON {}'.format(pollutant)], label='TCCON', color='purple')
     #first plot the flight data
     if pollutant == 'CO2':
         axs.plot(picarro.index, picarro['{}_ppm'.format(pollutant)], label='Picarro', color='black')
