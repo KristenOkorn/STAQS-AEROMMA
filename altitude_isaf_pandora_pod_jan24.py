@@ -22,8 +22,8 @@ from datetime import datetime
 from matplotlib.lines import Line2D
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','Caltech','Redlands'] #'AFRC'
-pods = ['YPODA2','YPODA7','YPODG5','YPODL5'] #'YPODR9'
+locations = ['TMF','Whittier','Caltech','Redlands','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
+pods = ['YPODA2','YPODA7','YPODG5','YPODL5','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
 
 #pollutant?
 pollutant = 'HCHO'
@@ -49,8 +49,8 @@ for n in range(len(locations)):
     #convert altitude - file is off by a factor of 10
     isaf['altitude'] = isaf['altitude']/10
     #-------------------------------------
-    #next load in the pandora tropo csv's - skip for caltech & redlands
-    if locations[n] != 'Redlands' and locations[n] != 'Caltech':
+    #next load in the pandora tropo csv's - skip for sites without one
+    if locations[n] == 'TMF' or locations[n] == 'Whittier':
         pandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
         #get the filename for pandora
         pandorafilename = "{}_tropo_extra_HCHO.csv".format(locations[n])
@@ -75,8 +75,8 @@ for n in range(len(locations)):
         #convert from mol/m2 to ppb
         pandora['Pandora Tropo HCHO'] = pandora['Pandora Tropo HCHO']*(pandora['top_height'])*0.08206*pandora['temperature']*(10**(9))/1000
     #-------------------------------------
-    #next load in the pandora surface csv's - skip for caltech & redlands
-    if locations[n] != 'Redlands' and locations[n] != 'Caltech':
+    #next load in the pandora surface csv's - skip for non-pandora sites
+    if locations[n] == 'TMF' or locations[n] == 'Whittier':
         surfpandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
         #get the filename for pandora
         surfpandorafilename = "{}_surface_extra_HCHO.csv".format(locations[n])
@@ -100,32 +100,62 @@ for n in range(len(locations)):
         surfpandora = surfpandora[surfpandora.iloc[:, 0] >= 0]
         #convert mol/m3 to ppb
         surfpandora['Pandora Surface HCHO'] = surfpandora['Pandora Surface HCHO']*0.08206*surfpandora['temperature']*(10**(9))/1000
+        #add a column for altitude - will all be 0
+        surfpandora['Surface Pandora altitude'] = 0
     #-------------------------------------
     #now load in the matching pod data - HCHO
-    #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
-    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
-    #get the filename for the pod
-    podfilename = "{}_HCHO.csv".format(pods[n])
-    #read in the first worksheet from the workbook myexcel.xlsx
-    podfilepath = os.path.join(podPath, podfilename)
-    pod = pd.read_csv(podfilepath,index_col=0)  
-    #remove any negatives
-    pod = pod[pod.iloc[:, 0] >= 0]
-    #Rename the index to match that of the pandora
-    pod = pod.rename_axis('datetime')
-    #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-    pod.index = pd.to_datetime(pod.index,format="%d-%b-%Y %H:%M:%S",errors='coerce')
-    #Change the pollutant column name
-    pod.columns.values[0] = 'INSTEP HCHO'
-    #add a column for altitude - will all be 0
-    pod['INSTEP altitude'] = 0
+    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+        #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
+        podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
+        #get the filename for the pod
+        podfilename = "{}_HCHO.csv".format(pods[n])
+        #read in the first worksheet from the workbook myexcel.xlsx
+        podfilepath = os.path.join(podPath, podfilename)
+        pod = pd.read_csv(podfilepath,index_col=0)  
+        #remove any negatives
+        pod = pod[pod.iloc[:, 0] >= 0]
+        #Rename the index to match that of the pandora
+        pod = pod.rename_axis('datetime')
+        #Convert the index to a DatetimeIndex and set the nanosecond values to zero
+        pod.index = pd.to_datetime(pod.index,format="%d-%b-%Y %H:%M:%S",errors='coerce')
+        #Change the pollutant column name
+        pod.columns.values[0] = 'INSTEP HCHO'
+        #add a column for altitude - will all be 0
+        pod['INSTEP altitude'] = 0
     
-    #get the data into UTC (from PDT)
-    if locations[n] != 'Redlands':
-        pod.index += pd.to_timedelta(7, unit='h')
+    #-------------------------------------
+    #now load in the matching SCAQMD data - HCHO
+    if locations[n] != 'TMF' and locations[n] != 'Whittier' and locations[n] !='Redlands' and locations[n] != 'Caltech':
+        #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
+        scaqmdPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\SCAQMD Data'
+        #get the filename for the pod
+        scaqmdfilename = "{}.csv".format(pods[n])
+        #read in the first worksheet from the workbook myexcel.xlsx
+        scaqmdfilepath = os.path.join(scaqmdPath, scaqmdfilename)
+        scaqmd = pd.read_csv(scaqmdfilepath,index_col=0)  
+        # Replace '--' with NaN in values column
+        scaqmd['Value'] = scaqmd['Value'].replace('--', np.nan)
+        #Convert values from string to float
+        scaqmd['Value'] = scaqmd['Value'].astype(float)
+        #remove any negatives
+        scaqmd = scaqmd[scaqmd.iloc[:, 0] >= 0]
+        #Convert the index to a DatetimeIndex and set the nanosecond values to zero
+        scaqmd.index = pd.to_datetime(scaqmd.index,errors='coerce')
+        #Change the pollutant column name
+        scaqmd.columns.values[0] = 'SCAQMD HCHO'
+        #add a column for altitude - will all be 0
+        scaqmd['SCAQMD altitude'] = 0
+    
+        #get the data into UTC (from PDT)
+        scaqmd.index += pd.to_timedelta(7, unit='h')
     #-------------------------------------
     #merge our dataframes
-    merge = pd.merge(isaf,pod,left_index=True, right_index=True)
+    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+        #For pod locations
+        merge = pd.merge(isaf,pod,left_index=True, right_index=True)
+    else:
+        #For SCAQMD locations
+        merge = pd.merge(isaf,scaqmd,left_index=True, right_index=True)
     #merge with pandora also - except for caltech & redlands
     if locations[n] != 'Redlands' and locations[n] != 'Caltech':
         merge = pd.merge(merge,pandora,left_index=True, right_index=True)
@@ -189,9 +219,12 @@ for n in range(len(locations)):
         #first plot the flight data
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
-        axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
+        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+            axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
+        elif locations[n] != 'TMF' or locations[n] != 'Whittier' or locations[n] !='Redlands' or locations[n] != 'Caltech':
+            axs[k].scatter(df['SCAQMD HCHO'], df['SCAQMD altitude'], label='SCAQMD', color='red')
         #then plot the pandora data, if there is any
-        if locations[n] != 'Redlands' and locations[n] != 'Caltech':
+        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
             axs[k].scatter(df['Pandora Tropo HCHO'], df['Pandora_alt'], label='Pandora Tropospheric Column', color='blue')
             axs[k].scatter(df['Pandora Surface HCHO'], df['INSTEP altitude'], label='Pandora Surface Estimate', color='green')
         #Add a title with the date to each subplot
