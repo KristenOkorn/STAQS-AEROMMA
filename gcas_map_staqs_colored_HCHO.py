@@ -37,19 +37,55 @@ from os.path import isfile, join
 fileList = [f for f in listdir(path) if isfile(join(path, f))]
 
 #need to pluck out just the lat/lon pairs that are relevant to each pod location
-locations = ['TMF','Whittier','Redlands']#'AFRC','Caltech',
-latitudes = [34.38189,33.97676,34.05985]#34.95991,34.13685,
-longitudes = [-117.67809,-118.03032,-117.14573]#-117.88107,-118.12608,
+podlocations = ['TMF','Whittier','Redlands']#'AFRC','Caltech',
+podlatitudes = [34.38189,33.97676,34.05985]#34.95991,34.13685,
+podlongitudes = [-117.67809,-118.03032,-117.14573]#-117.88107,-118.12608,
 pods = ['YPODA2','YPODA7','YPODL5']
 
+#split into pods vs scaqmd
+slocations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park']#'AFRC','Caltech',
+slatitudes = [33.9185,33.89011,33.87049,33.83718,33.82494,33.81917,33.80229,33.78136,33.78199,33.78607]#34.95991,34.13685,
+slongitudes = [-118.40796,-118.4016,-118.3129,-118.33148,-118.26844,-118.21152,-118.22021,-118.21363,-118.26758,-118.2864]#-117.88107,-118.12608,
+
 #sites & dates where we have data overlapping with GCAS
-dates = ['2023-08-22','2023-08-23','2023-08-25']
-Whittier_HCHO = [2.04375,2.14523,2.93427]
-Whittier_alt = [8663.8766,6726.1166,9049.99255]
-TMF_HCHO = [2.04375,2.14523,2.93427]
-TMF_alt = [8663.877,6726.1167,9049.9926]
-Redlands_HCHO = [2.04375,2.14523,2.93427]
-Redlands_alt=[8663.87657,6726.1166,9049.99255]
+dates = ['2023-08-22','2023-08-23','2023-08-25','2023-08-26']
+Whittier_HCHO = [2.04375,2.14523,2.93427,'NaN']
+Whittier_alt = [8663.8766,6726.1166,9049.99255,'NaN']
+TMF_HCHO = [2.04375,2.14523,2.93427,'NaN']
+TMF_alt = [8663.877,6726.1167,9049.9926,'NaN']
+Redlands_HCHO = [2.04375,2.14523,2.93427,'NaN']
+Redlands_alt=[8663.87657,6726.1166,9049.99255,'NaN']
+StAnthony_HCHO = [2.42,0.49,3.02,0]
+StAnthony_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+StAnthony_temp = [294.261,293.622,292.556,293.311]
+ManhattanBeach_HCHO = [0,0,0,0]
+ManhattanBeach_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+ManhattanBeach_temp = [294.261,293.622,292.556,293.311]
+GuenserPark_HCHO = [0,0,2.42,2.48]
+GuenserPark_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+GuenserPark_temp = [294.261,293.622,292.556,293.311]
+ElmAve_HCHO = [0,0.04,1.64,0.46]
+ElmAve_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+ElmAve_temp = [294.261,293.622,292.556,293.311]
+Judson_HCHO = [0,0,1.29,0]
+Judson_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+Judson_temp = [296.25,296.761,295.35,296.856]
+StLuke_HCHO = [0,0,1.73,0]
+StLuke_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+StLuke_temp = [296.25,296.761,295.35,296.856]
+Hudson_HCHO = [0.27,1.98,2.41,0]
+Hudson_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+Hudson_temp = [296.25,296.761,295.35,296.856]
+InnerPort_HCHO = [1.24,2.39,1.33,0]
+InnerPort_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+InnerPort_temp = [296.25,296.761,295.35,296.856]
+FirstMethodist_HCHO = [4,0.24,1.59,3.57]
+FirstMethodist_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+FirstMethodist_temp = [296.25,296.761,295.35,296.856]
+HarborPark_HCHO = [0,0,0,0]
+HarborPark_alt = [6805.2603,5657.095,9043.99505,5584.2833]
+HarborPark_temp = [296.25,296.761,295.35,296.856]
+
 
 #Do a separate plot for each day 
 for i in range(len(fileList)):
@@ -184,24 +220,24 @@ for i in range(len(fileList)):
     
     #next add the pod data so it sits on top
     #has to match the current date, then loop through each location
-    for k in range(len(locations)):
-       #get the right pod
-       if locations[k] == 'Redlands':
-           hcho_list = Redlands_HCHO
-           alt_list = Redlands_alt
-       elif locations[k] == 'Whittier':
-           hcho_list = Whittier_HCHO
-           alt_list = Whittier_alt
-       elif locations[k] == 'TMF':
-           hcho_list = TMF_HCHO    
-           alt_list = TMF_alt
-        
-       for l in range(len(dates)):
-           #check if the date matches our pod data
-           if dates[l] == '{}-{}-{}'.format(year,month,day):
+    for l in range(len(dates)):
+        #check if the date matches our pod data
+        if dates[l] == '{}-{}-{}'.format(year,month,day):
+            #get the info we need to plot the pods
+            for k in range(len(podlocations)):
+               #get the right pod
+               if podlocations[k] == 'Redlands':
+                   hcho_list = Redlands_HCHO
+                   alt_list = Redlands_alt
+               elif podlocations[k] == 'Whittier':
+                   hcho_list = Whittier_HCHO
+                   alt_list = Whittier_alt
+               elif podlocations[k] == 'TMF':
+                   hcho_list = TMF_HCHO    
+                   alt_list = TMF_alt
+               
                #make sure we have HCHO data on that day
                if hcho_list[l] != 'NaN':
-                    
                    #get the temperature data to convert
                    tempfilename = '{}_temp.csv'.format(pods[k])
                    #get the full file path & read it in
@@ -218,15 +254,70 @@ for i in range(len(fileList)):
                    temp = temp.resample('D').median()
                    #Change the temperature column name
                    temp.columns.values[0] = 'temperature'
-                    
+                            
                    #get the median temperature for this day
                    daily_temp = temp.loc[dates[l]][0]
-                    
+                            
                    #convert the ppb value to molec/cm2
                    pod_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-                   #get the necessary color   
-                   ax4.scatter(longitudes[k], latitudes[k],c=sc.cmap(norm(hcho_list[l])), edgecolor='black', s=40, transform=plate, label='{}'.format(locations[k]))
+                   #get the necessary color and scatter  
+                   ax4.scatter(podlongitudes[k], podlatitudes[k],c=sc.cmap(norm(hcho_list[l])), edgecolor='black', s=40, transform=plate)
     
+            for kk in range(len(slocations)):
+                if slocations[kk] == 'St Anthony':
+                    hcho_list = StAnthony_HCHO    
+                    alt_list = StAnthony_alt
+                    temp_list = StAnthony_temp
+                elif slocations[kk] == 'Manhattan Beach':
+                    hcho_list = ManhattanBeach_HCHO    
+                    alt_list = ManhattanBeach_alt 
+                    temp_list = ManhattanBeach_temp
+                elif slocations[kk] == 'Guenser Park':
+                    hcho_list = GuenserPark_HCHO    
+                    alt_list = GuenserPark_alt 
+                    temp_list = GuenserPark_temp 
+                elif slocations[kk] == 'Elm Avenue':
+                    hcho_list = ElmAve_HCHO    
+                    alt_list = ElmAve_alt 
+                    temp_list = ElmAve_temp
+                elif slocations[kk] == 'Judson':
+                    hcho_list = Judson_HCHO    
+                    alt_list = Judson_alt   
+                    temp_list = Judson_temp
+                elif slocations[kk] == 'St Luke':
+                    hcho_list = StLuke_HCHO    
+                    alt_list = StLuke_alt  
+                    temp_list = StLuke_temp 
+                elif slocations[kk] == 'Hudson':
+                    hcho_list = Hudson_HCHO    
+                    alt_list = Hudson_alt  
+                    temp_list = Hudson_temp
+                elif slocations[kk] == 'InnerPort':
+                    hcho_list = InnerPort_HCHO    
+                    alt_list = InnerPort_alt
+                    temp_list = InnerPort_temp
+                elif slocations[kk] == 'FirstMethodist':
+                    hcho_list = FirstMethodist_HCHO    
+                    alt_list = FirstMethodist_alt    
+                    temp_list = FirstMethodist_temp
+                elif slocations[kk] == 'HarborPark':
+                    hcho_list = HarborPark_HCHO    
+                    alt_list = HarborPark_alt 
+                    temp_list = HarborPark_temp
+                    
+                #get the average temperature for this day
+                daily_temp = temp_list[l]
+                         
+                #convert the ppb value to molec/cm2
+                if hcho_list[l] == 0: #need to add a stop if it read 0
+                    scaqmd_hcho = 0
+                else: #otherwise, convert normally
+                    scaqmd_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                #get the necessary color and scatter  
+                ax4.scatter(slongitudes[kk], slatitudes[kk],c=sc.cmap(norm(hcho_list[l])), edgecolor='white', s=40, transform=plate)
+ 
+    
+    #----set map extent-----
     #get rid of nans in our min/max
     max_lon = max_lon[~np.isnan(max_lon)]
     max_lat = max_lat[~np.isnan(max_lat)]
