@@ -214,8 +214,16 @@ for n in range(len(locations)):
     for k, (day, df) in enumerate(split_dataframes.items()):
         
         #create a regular set of y's (altitude) for the Pandora tropo data
-        df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
-    
+        if len(df) <10:
+            #Create empty rows at the end to populate
+            empty_rows = pd.DataFrame(np.nan, index=range(10-len(df)), columns=df.columns)
+            #Append the empty rows to the DataFrame
+            df = pd.concat([df, empty_rows], ignore_index=True)
+            #then proceed to fill them
+            df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
+        else: #proceed as normal if we have enough points
+            df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
+        
         #first plot the flight data
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
@@ -225,6 +233,8 @@ for n in range(len(locations)):
             axs[k].scatter(df['SCAQMD HCHO'], df['SCAQMD altitude'], label='SCAQMD', color='red')
         #then plot the pandora data, if there is any
         if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
+            #replace the tropo data with the median before plotting
+            df['Pandora Tropo HCHO'] = np.nanmedian(df['Pandora Tropo HCHO'])
             axs[k].scatter(df['Pandora Tropo HCHO'], df['Pandora_alt'], label='Pandora Tropospheric Column', color='blue')
             axs[k].scatter(df['Pandora Surface HCHO'], df['INSTEP altitude'], label='Pandora Surface Estimate', color='green')
         #Add a title with the date to each subplot
