@@ -20,7 +20,7 @@ locations = ['Caltech','AFRC']
 pods = ['YPODG5','YPODR9'] 
 
 #pollutant?
-pollutant = 'CO2'
+pollutant = 'CH4'
 
 for n in range(len(locations)): 
     #-------------------------------------
@@ -31,8 +31,6 @@ for n in range(len(locations)):
     #read in the first worksheet from the workbook myexcel.xlsx
     picarrofilepath = os.path.join(picarroPath, picarrofilename)
     picarro = pd.read_csv(picarrofilepath,index_col=0)  
-    #remove any negatives
-    picarro = picarro[picarro.iloc[:, 0] >= 0]
     #Convert the index to a DatetimeIndex and set the nanosecond values to zero
     picarro.index = pd.to_datetime(picarro.index,format="%Y-%m-%d %H:%M:%S",errors='coerce')
    
@@ -42,7 +40,10 @@ for n in range(len(locations)):
     #Convert ppb to ppm if CH4 or CO
     if pollutant == 'CH4' or pollutant == 'CO':
         picarro['{}_ppb'.format(pollutant)] = picarro['{}_ppb'.format(pollutant)]/1000
-    
+        #Drop rows where pollutant column has negative values
+        picarro = picarro[picarro['{}_ppb'.format(pollutant)] >= 0]
+    else: #remove negatives for CO2
+        picarro = picarro[picarro['{}_ppm'.format(pollutant)] >= 0]
     #-------------------------------------
     #now load in the matching pod data - CH4
     podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
@@ -111,8 +112,16 @@ for n in range(len(locations)):
     for k, (day, df) in enumerate(split_dataframes.items()):
         
         #create a regular set of y's (altitude) for the Pandora tropo data
-        df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
-    
+        if len(df) <10:
+            #Create empty rows at the end to populate
+            empty_rows = pd.DataFrame(np.nan, index=range(10-len(df)), columns=df.columns)
+            #Append the empty rows to the DataFrame
+            df = pd.concat([df, empty_rows], ignore_index=True)
+            #then proceed to fill them
+            df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
+        else: #proceed as normal if we have enough points
+            df['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(df))
+        
         #first plot the flight data
         if pollutant == 'CO2':
             axs[k].scatter(df['{}_ppm'.format(pollutant)], df['altitude'], label='Picarro', color='black')
@@ -121,7 +130,9 @@ for n in range(len(locations)):
         #then plot the instep data
         axs[k].scatter(df['INSTEP {}'.format(pollutant)], df['INSTEP altitude'], label='INSTEP', color='red')
         #also plot the tccon data
-        axs[k].scatter(df['TCCON {}'.format(pollutant)], df['altitude'], label='TCCON', color='purple')
+        #replace the tropo data with the median before plotting
+        df['TCCON {}'.format(pollutant)] = np.nanmedian(df['TCCON {}'.format(pollutant)])
+        axs[k].scatter(df['TCCON {}'.format(pollutant)], df['Pandora_alt'], label='TCCON', color='purple')
         #Add a title with the date to each subplot
         axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
         axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
