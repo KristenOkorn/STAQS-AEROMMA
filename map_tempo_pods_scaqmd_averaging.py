@@ -321,7 +321,7 @@ plt.show()
 #Access the figure object
 fig = qm.axes.get_figure()
 #save to a different folder so we don't confuse the script on the next iteration
-Spath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\GCAS HCHO Outputs\\'
+Spath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\TEMPO HCHO Outputs\\'
 #Create the full path with the figure name
 savePath = os.path.join(Spath,'TEMPO_avg_HCHO_map_{}'.format(daterange))
 #Save the figure to a filepath
