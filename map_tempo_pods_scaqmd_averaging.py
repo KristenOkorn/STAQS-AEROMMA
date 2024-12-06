@@ -227,7 +227,7 @@ for n in range(len(pods)):
     pod_x, pod_y = transform(lon_lat_proj, proj_qm, podlongitudes[n], podlatitudes[n])
                    
     #get the necessary color and scatter  
-    ax.scatter(pod_x, pod_y,c=cmap(norm(pod_avg)), edgecolor='grey', s=40)
+    ax.scatter(pod_x, pod_y,c=cmap(norm(pod_avg)), marker = 's', edgecolor='white', s=40)
  
 #----------------------------------------------
 #Now add the scaqmd data - HCHO   
