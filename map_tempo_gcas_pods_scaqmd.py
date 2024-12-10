@@ -340,7 +340,8 @@ for i in range(len(fileList)):
                    daily_temp = temp.loc[dates[l]][0]
                             
                    #convert the ppb value to molec/cm2
-                   pod_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                   #pod_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                   pod_hcho = hcho_list[l] * (1/daily_temp) * 1 * (6.022/0.0821) * (10**17)
                    
                    #transform the lat/lon before plotting
                    pod_x, pod_y = transform(lon_lat_proj, proj_qm, podlongitudes[k], podlatitudes[k])
@@ -397,8 +398,9 @@ for i in range(len(fileList)):
                 if hcho_list[l] == 0: #need to add a stop if it read 0
                     scaqmd_hcho = 0
                 else: #otherwise, convert normally
-                    scaqmd_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-                 
+                    #scaqmd_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                    scaqmd_hcho = hcho_list[l] * (1/daily_temp) * 1 *(6.022/0.0821) * (10**17)
+                    
                 #transform the lat/lon before plotting
                 scaqmd_x, scaqmd_y = transform(lon_lat_proj, proj_qm, slongitudes[kk], slatitudes[kk])
   
@@ -433,6 +435,6 @@ for i in range(len(fileList)):
     #save to a different folder so we don't confuse the script on the next iteration
     Spath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\TEMPO HCHO Outputs\\'
     #Create the full path with the figure name
-    savePath = os.path.join(Spath,'TEMPO_GCAS_HCHO_map_{}_{}_{}'.format(year,month,day))
+    savePath = os.path.join(Spath,'TEMPO_GCAS_HCHO_map_{}_{}_{}_1m'.format(year,month,day))
     # Save the figure to a filepath
     fig.savefig(savePath)
