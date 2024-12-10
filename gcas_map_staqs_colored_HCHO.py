@@ -259,7 +259,9 @@ for i in range(len(fileList)):
                    daily_temp = temp.loc[dates[l]][0]
                             
                    #convert the ppb value to molec/cm2
-                   pod_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                   #pod_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                   pod_hcho = hcho_list[l] * (1/daily_temp) * alt_list[l] * (6.022/0.0821) * (10**17)
+                   
                    #get the necessary color and scatter  
                    ax4.scatter(podlongitudes[k], podlatitudes[k],c=sc.cmap(norm(hcho_list[l])), edgecolor='black', s=40, transform=plate)
     
@@ -312,7 +314,9 @@ for i in range(len(fileList)):
                 if hcho_list[l] == 0: #need to add a stop if it read 0
                     scaqmd_hcho = 0
                 else: #otherwise, convert normally
-                    scaqmd_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                    #scaqmd_hcho = (1/hcho_list[l])*(alt_list[l])*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
+                    scaqmd_hcho = hcho_list[l] * (1/daily_temp) * alt_list[l] *(6.022/0.0821) * (10**17)
+                    
                 #get the necessary color and scatter  
                 ax4.scatter(slongitudes[kk], slatitudes[kk],c=sc.cmap(norm(hcho_list[l])), edgecolor='white', s=40, transform=plate)
  
