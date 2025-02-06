@@ -2,6 +2,8 @@
 """
 Created on Tue Jan  2 21:47:27 2024
 
+MOST RECENT UPDATE: 2/6/2025
+
 @author: okorn
 """
 
@@ -134,9 +136,9 @@ for n in range(len(locations)):
         scaqmdfilepath = os.path.join(scaqmdPath, scaqmdfilename)
         scaqmd = pd.read_csv(scaqmdfilepath,index_col=0)  
         # Replace '--' with NaN in values column
-        scaqmd['Value'] = scaqmd['Value'].replace('--', np.nan)
+        scaqmd['HCHO'] = scaqmd['HCHO'].replace('--', np.nan)
         #Convert values from string to float
-        scaqmd['Value'] = scaqmd['Value'].astype(float)
+        scaqmd['HCHO'] = scaqmd['HCHO'].astype(float)
         #remove any negatives
         scaqmd = scaqmd[scaqmd.iloc[:, 0] >= 0]
         #Convert the index to a DatetimeIndex and set the nanosecond values to zero
