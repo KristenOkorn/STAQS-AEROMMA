@@ -2,8 +2,6 @@
 """
 Created on Tue Jan  2 21:47:27 2024
 
-MOST RECENT UPDATE: 2/6/2025
-
 @author: okorn
 """
 
