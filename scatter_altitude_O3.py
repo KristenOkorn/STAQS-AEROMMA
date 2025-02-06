@@ -21,6 +21,9 @@ from matplotlib.lines import Line2D
 locations = ['TMF','Caltech','Redlands','Whittier','AFRC']#'Whittier','AFRC'
 pods = ['YPODA2','YPODG5','YPODL5','YPODA7','YPODR9']#
 
+#locations = ['TMF']
+#pods = ['YPODA2']
+
 #pollutant?
 pollutant = 'O3'
 
@@ -29,7 +32,7 @@ IQR = 'yes'
 
 for n in range(len(locations)): 
     #-------------------------------------
-    #load in the in-situ data - ISAF HCHO
+    #load in the DC-8 in-situ data - NNOx O3
     nnoxPath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\NNOX Outputs\\'
     #get the filename for the pod
     nnoxfilename = "NNOX_NO2_O3_{}.csv".format(locations[n])
@@ -83,8 +86,44 @@ for n in range(len(locations)):
     #add a column for altitude - will all be 0
     pod['INSTEP altitude'] = 0
     #-------------------------------------
+    #add the surface O3 for Redlands only
+    if locations[n] == 'Redlands':
+        #now load in the Redlands surface O3 data
+        redsurfPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Redlands O3 AQMD Reference'
+        #get the filename for the pod
+        redsurffilename = "RedlandsO3.csv"
+        #read in the first worksheet from the workbook myexcel.xlsx
+        redsurffilepath = os.path.join(redsurfPath, redsurffilename)
+        redsurf = pd.read_csv(redsurffilepath,index_col=0)  
+        #Convert the index to a DatetimeIndex and set the nanosecond values to zero
+        redsurf.index = pd.to_datetime(redsurf.index,errors='coerce')
+        #Change the pollutant column name
+        redsurf.columns.values[0] = 'SCAQMD O3'
+        #add a column for altitude - will all be 0
+        redsurf['SCAQMD altitude'] = 0
+    #repeat for TMF
+    if locations[n] == 'TMF':
+        #now load in the Redlands surface O3 data
+        tmfsurfPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment'
+        #get the filename for the pod
+        tmfsurffilename = "TMFO3.csv"
+        #read in the first worksheet from the workbook myexcel.xlsx
+        tmfsurffilepath = os.path.join(tmfsurfPath, tmfsurffilename)
+        tmfsurf = pd.read_csv(tmfsurffilepath,index_col=0)  
+        #Convert the index to a DatetimeIndex and set the nanosecond values to zero
+        tmfsurf.index = pd.to_datetime(tmfsurf.index,errors='coerce')
+        #Change the pollutant column name
+        tmfsurf.columns.values[0] = '49i O3'
+        #add a column for altitude - will all be 0
+        tmfsurf['49i altitude'] = 0
+    
     #merge our dataframes
     merge = pd.merge(nnox,pod,left_index=True, right_index=True)
+    #if we have matching surface data, add it
+    if locations[n] == 'Redlands':
+        merge = pd.merge(merge,redsurf,left_index=True, right_index=True)
+    elif locations[n] == 'TMF':
+        merge = pd.merge(merge,tmfsurf,left_index=True, right_index=True)
     # #merge with pandora also - except for caltech & redlands
     # if locations[n] != 'Redlands' and locations[n] != 'Caltech':
     #     merge = pd.merge(merge,pandora,left_index=True, right_index=True)
@@ -135,6 +174,11 @@ for n in range(len(locations)):
         axs[k].scatter(df['O3_NNOx'], df['altitude'], label='NNOx', color='black')
         #then plot the instep data
         axs[k].scatter(df['INSTEP O3'], df['INSTEP altitude'], label='INSTEP', color='red')
+        #plot the surface data, if any
+        if locations[n] ==  'Redlands':
+            axs[k].scatter(df['SCAQMD O3'], df['SCAQMD altitude'], label='SCAQMD', color='blue')
+        elif locations[n] == 'TMF':
+            axs[k].scatter(df['49i O3'], df['49i altitude'], label='49i', color='blue')
         #then plot the pandora data, if there is any
         # if locations[n] != 'Redlands' and locations[n] != 'Caltech':
         #     axs[k].scatter(df['Pandora Column O3'], df['Pandora_alt'], label='Pandora Column Column', color='blue')
