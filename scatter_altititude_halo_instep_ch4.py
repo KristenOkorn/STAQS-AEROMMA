@@ -17,8 +17,8 @@ from datetime import datetime
 from matplotlib.lines import Line2D
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','Redlands','AFRC'] #'AFRC'
-pods = ['YPODA2','YPODA7','YPODL5','YPODR9'] #'YPODR9'
+locations = ['TMF','Whittier','Redlands','AFRC','Caltech'] #'AFRC'
+pods = ['YPODA2','YPODA7','YPODL5','YPODR9','YPODG5'] #'YPODR9'
 
 #pollutant?
 pollutant = 'CH4'
@@ -107,7 +107,7 @@ for n in range(len(locations)):
         axs[k].tick_params(axis='both', labelsize=12)
         
     #Increase vertical space between subplots
-    plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
+    plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.15)  # You can adjust the value as needed
     #Single y-axis label for all subplots
     fig.text(0.03, 0.5, 'Altitude (m)', va='center', rotation='vertical',fontsize=16)
     #Common x-axis label for all subplots
@@ -123,6 +123,6 @@ for n in range(len(locations)):
     Spath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\HALO Plots\\'
     
     #Create the full path with the figure name
-    savePath = os.path.join(Spath,'altitude_CH4_{}'.format(locations[n]))
+    savePath = os.path.join(Spath,'altitude_HALO_CH4_{}'.format(locations[n]))
     #Save the figure to a filepath
     fig.savefig(savePath)
