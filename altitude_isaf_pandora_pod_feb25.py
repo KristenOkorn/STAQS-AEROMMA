@@ -16,10 +16,10 @@ import os
 import numpy as np
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
-pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
-#locations = ['TMF','Whittier','Caltech','Redlands','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
-#pods = ['YPODA2','YPODA7','YPODG5','YPODL5','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
+#locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
+#pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
+locations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
+pods = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
 
 #pollutant?
 pollutant = 'HCHO'
@@ -152,7 +152,7 @@ for n in range(len(locations)):
         #For SCAQMD locations
         merge = pd.merge(isaf,scaqmd,left_index=True, right_index=True)
     #filter to match times for pandora also - except for caltech & redlands
-    if locations[n] != 'Redlands' and locations[n] != 'Caltech':
+    if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
         #get the start and end times from the merge file
         start_time = merge.index[0]
         end_time = merge.index[-1]
@@ -188,8 +188,9 @@ for n in range(len(locations)):
     
     #remove missing values for ease of plotting
     merge = merge.dropna()
-    pandora = pandora.dropna()
-    surfpandora = surfpandora.dropna()
+    if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
+        pandora = pandora.dropna()
+        surfpandora = surfpandora.dropna()
     
     #-------------------------------------
     #figure out how many days we have - for how many subplots
@@ -199,8 +200,9 @@ for n in range(len(locations)):
     
     # Create a dictionary to store DataFrames for each unique day
     split_dataframes = {}
-    pandora_split_dataframes = {}
-    surfpandora_split_dataframes = {}
+    if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
+        pandora_split_dataframes = {}
+        surfpandora_split_dataframes = {}
 
     #Split the DataFrame based on unique days
     for day in unique_days_list:
@@ -222,20 +224,20 @@ for n in range(len(locations)):
         axs = [axs]
 
     for k, (day, df) in enumerate(split_dataframes.items()):
-        
-        #create a regular set of y's (altitude) for the Pandora tropo data
-        if len(pandora_day_data) <10:
-            #Create empty rows at the end to populate
-            empty_rows = pd.DataFrame(np.nan, index=range(10-len(pandora_day_data)), columns=pandora_split_dataframes[day].columns)
-            #Append the empty rows to the DataFrame
-            pandora_day_data = pd.concat([pandora_day_data, empty_rows], ignore_index=True)
-            #then proceed to fill them
-            pandora_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora_day_data))
-        else: #proceed as normal if we have enough points
-            pandora_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora_day_data))
-        #also add a set of y's at 0 for the surface pandora estimatea
-        surfpandora_day_data['Pandora_alt'] = np.linspace(0, 0, len(surfpandora_day_data))
-        
+        if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
+            #create a regular set of y's (altitude) for the Pandora tropo data
+            if len(pandora_day_data) <10:
+                #Create empty rows at the end to populate
+                empty_rows = pd.DataFrame(np.nan, index=range(10-len(pandora_day_data)), columns=pandora_split_dataframes[day].columns)
+                #Append the empty rows to the DataFrame
+                pandora_day_data = pd.concat([pandora_day_data, empty_rows], ignore_index=True)
+                #then proceed to fill them
+                pandora_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora_day_data))
+            else: #proceed as normal if we have enough points
+                pandora_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora_day_data))
+            #also add a set of y's at 0 for the surface pandora estimatea
+            surfpandora_day_data['Pandora_alt'] = np.linspace(0, 0, len(surfpandora_day_data))
+            
         #first plot the flight data
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
@@ -275,8 +277,8 @@ for n in range(len(locations)):
     Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF HCHO Plots\\'
     #Create the full path with the figure name
     if IQR == 'yes':
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR_maxvert'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR'.format(locations[n]))
     else:
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_maxvert'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}'.format(locations[n]))
     #Save the figure to a filepath
     fig.savefig(savePath)
