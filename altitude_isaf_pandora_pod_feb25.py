@@ -14,18 +14,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from datetime import datetime
-from matplotlib.lines import Line2D
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','Caltech','Redlands','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
-pods = ['YPODA2','YPODA7','YPODG5','YPODL5','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
+locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
+pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
+#locations = ['TMF','Whittier','Caltech','Redlands','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
+#pods = ['YPODA2','YPODA7','YPODG5','YPODL5','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
 
 #pollutant?
 pollutant = 'HCHO'
 
 #use interquartile range for Pandora instead of full range?
-IQR = 'yes'
+IQR = 'no'
 
 for n in range(len(locations)): 
     #-------------------------------------
@@ -46,7 +46,7 @@ for n in range(len(locations)):
     isaf['altitude'] = isaf['altitude']/10
     #-------------------------------------
     #next load in the pandora tropo csv's - skip for sites without one
-    if locations[n] == 'TMF' or locations[n] == 'Whittier':
+    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
         pandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
         #get the filename for pandora
         pandorafilename = "{}_tropo_extra_HCHO.csv".format(locations[n])
@@ -58,21 +58,20 @@ for n in range(len(locations)):
         #Convert the index to a DatetimeIndex
         pandora.index = pd.to_datetime(pandora.index)#rename index to datetime
         pandora = pandora.rename_axis('datetime')
-        #Filter so that the lowest quality data is NOT included
+        #Filter so the lowest quality flag is omitted
         pandora = pandora.loc[pandora['quality_flag'] != 12]
         #get rid of any unnecessary columns
-        pandora = pandora[['HCHO','temperature','top_height','max_horiz','max_vert_tropo']]
+        pandora = pandora[['HCHO','temperature','top_height','max_vert_tropo']]
         #resample to minutely - since pod data will be minutely
-        pandora = pandora.resample('T').mean()
+        #pandora = pandora.resample('T').mean()
         #Change the pollutant column name
         pandora.columns.values[0] = 'Pandora Tropo HCHO'
         #remove any negatives
         pandora = pandora[pandora.iloc[:, 0] >= 0]
         #convert from mol/m2 to ppb
-        pandora['Pandora Tropo HCHO'] = pandora['Pandora Tropo HCHO']*(pandora['top_height'])*0.08206*pandora['temperature']*(10**(9))/1000
-    #-------------------------------------
-    #next load in the pandora surface csv's - skip for non-pandora sites
-    if locations[n] == 'TMF' or locations[n] == 'Whittier':
+        pandora['Pandora Tropo HCHO'] = pandora['Pandora Tropo HCHO']*0.08206*pandora['temperature']*1000/(pandora['max_vert_tropo'])
+        #-------------------------------------
+
         surfpandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
         #get the filename for pandora
         surfpandorafilename = "{}_surface_extra_HCHO.csv".format(locations[n])
@@ -84,12 +83,12 @@ for n in range(len(locations)):
         #Convert the index to a DatetimeIndex
         surfpandora.index = pd.to_datetime(surfpandora.index)#rename index to datetime
         surfpandora = surfpandora.rename_axis('datetime')
-        #Filter so that the lowest quality data is NOT included
+        #Filter to only use high quality data
         surfpandora = surfpandora.loc[surfpandora['quality_flag'] != 12]
         #hold onto the HCHO data and relevant parameters only
         surfpandora = surfpandora[['HCHO','temperature','top_height','max_vert_tropo']]
         #resample to minutely - since pod data will be minutely
-        surfpandora = surfpandora.resample('T').mean()
+        #surfpandora = surfpandora.resample('T').mean()
         #Change the pollutant column name
         surfpandora.columns.values[0] = 'Pandora Surface HCHO'
         #remove any negatives
@@ -100,7 +99,7 @@ for n in range(len(locations)):
         surfpandora['Surface Pandora altitude'] = 0
     #-------------------------------------
     #now load in the matching pod data - HCHO
-    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech' or locations[n] == 'AFRC':
         #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
         podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
         #get the filename for the pod
@@ -121,7 +120,7 @@ for n in range(len(locations)):
     
     #-------------------------------------
     #now load in the matching SCAQMD data - HCHO
-    if locations[n] != 'TMF' and locations[n] != 'Whittier' and locations[n] !='Redlands' and locations[n] != 'Caltech':
+    if locations[n] != 'TMF' and locations[n] != 'Whittier' and locations[n] !='Redlands' and locations[n] != 'Caltech' and locations[n] != 'AFRC':
         #podPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\Field Data'
         scaqmdPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\SCAQMD Data'
         #get the filename for the pod
@@ -146,7 +145,7 @@ for n in range(len(locations)):
         scaqmd.index += pd.to_timedelta(7, unit='h')
     #-------------------------------------
     #merge our dataframes
-    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+    if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech' or locations[n] == 'AFRC':
         #For pod locations
         merge = pd.merge(isaf,pod,left_index=True, right_index=True)
     else:
@@ -208,7 +207,7 @@ for n in range(len(locations)):
         day_data = merge[merge.index.date == day]
         split_dataframes[day] = day_data
         #now repeat for the pandora data
-        if locations[n] == 'TMF' or locations[n] == 'Whittier':
+        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
             pandora_day_data = pandora[pandora.index.date == day]
             pandora_split_dataframes[day] = pandora_day_data
             #now repeat for the surface pandora data
@@ -240,9 +239,9 @@ for n in range(len(locations)):
         #first plot the flight data
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
-        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech':
+        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] =='Redlands' or locations[n] == 'Caltech' or locations[n] == 'AFRC':
             axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
-        elif locations[n] != 'TMF' or locations[n] != 'Whittier' or locations[n] !='Redlands' or locations[n] != 'Caltech':
+        else:
             axs[k].scatter(df['SCAQMD HCHO'], df['SCAQMD altitude'], label='SCAQMD', color='red')
         
         #then plot the pandora data, if there is any
@@ -276,9 +275,8 @@ for n in range(len(locations)):
     Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF HCHO Plots\\'
     #Create the full path with the figure name
     if IQR == 'yes':
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR_topheight'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}_IQR_maxvert'.format(locations[n]))
     else:
-        savePath = os.path.join(Spath,'altitude_HCHO_{}_topheight'.format(locations[n]))
+        savePath = os.path.join(Spath,'altitude_HCHO_{}_maxvert'.format(locations[n]))
     #Save the figure to a filepath
     fig.savefig(savePath)
-    #not saving out correctly as of 5/28/24
