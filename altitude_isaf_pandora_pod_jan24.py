@@ -2,6 +2,8 @@
 """
 Created on Tue Jan  2 21:47:27 2024
 
+DO NOT USE THIS!! Pandora column conversion & row used from Pandora file are both wrong!!! Use corrected 2025 version ONLY
+
 @author: okorn
 """
 
