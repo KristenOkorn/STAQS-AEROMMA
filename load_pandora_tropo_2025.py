@@ -4,7 +4,7 @@
 """
 Created on Tue Nov 28 16:38:54 2023
 
-Edited to extract tropo column data - not just surface
+Edited to extract tropo column data - not surface
 
 Includes additional columns with relevant info - flags, height, temp etc.
 
@@ -61,28 +61,30 @@ for k in range(len(locations)):
             #Create a DataFrame from the list of data rows
             data = pd.DataFrame(data_rows)
             
-            #get the correct columns - different for SJSU (NO2 only)
-            if locations[k] == 'SJSU':
-                desired_cols = [0, 20, 24, 19, 39]
-                #datetime, NO2, quality_flag, surf_uncertainty, temp
+            #get the correct columns
+            if pollutant == 'NO2':
+                desired_cols = [0,  #datetime
+                                61, #NO2 tropospheric column
+                                38, #quality_flag
+                                62, #independent uncertainty
+                                14, #temperature
+                                64, #max_vert_tropo
+                                67, #top_height
+                                13, #pressure
+                                3]  #SZA
+                                #+ list(range(69, len(data.columns))) #layer1+
 
-            else:
-                if pollutant == 'NO2':
-                    #FIX THESE BEFORE USING!! these columns might be wrong
-                    desired_cols = [0, 62, 39, 57, 15, 64, 65, 68, 13, 3] + list(range(69, len(data.columns)))
-                    #datetime, no2, quality_flag, surf_uncert, temp, max_horiz_tropo, max_vert_tropo, top_height, pressure, SZA, layer1+
-
-                elif pollutant == 'HCHO':
-                    desired_cols = [0, #datetime
-                                    48, #HCHO tropospheric column
-                                    49, #independent uncertainty
-                                    38, #L2 data quality flag (0=high)
-                                    14, #temperature
-                                    51, #max vert
-                                    52, #top height
-                                    13, #pressure
-                                    3] #SZA
-                    #+ list(range(55, len(data.columns))) #layer1+
+            elif pollutant == 'HCHO':
+                desired_cols = [0, #datetime
+                                48, #HCHO tropospheric column
+                                49, #independent uncertainty
+                                38, #L2 data quality flag (0=high)
+                                14, #temperature
+                                51, #max vert tropo
+                                52, #top height
+                                13, #pressure
+                                3] #SZA
+                                #+ list(range(55, len(data.columns))) #layer1+
                     
                 #make a list to hold the layer data names
                 #layers = []
@@ -94,30 +96,22 @@ for k in range(len(locations)):
             data = data.iloc[:, desired_cols]
 
             #Rename the remaining columns
-            if locations[k] == 'SJSU':
-                data.columns = ['datetime','{}'.format(pollutant),'quality_flag','surface_uncertainty','temperature']
-            else:
-                data.columns = ['datetime',
-                                '{}'.format(pollutant),
-                                'independent_uncertainty',
-                                'quality_flag',
-                                'temperature',
-                                'max_vert_tropo',
-                                'top_height',
-                                'pressure',
-                                'SZA'] 
-                                #+ layers
+            data.columns = ['datetime',
+                            '{}'.format(pollutant),
+                            'independent_uncertainty',
+                            'quality_flag',
+                            'temperature',
+                            'max_vert_tropo',
+                            'top_height',
+                            'pressure',
+                            'SZA'] 
+                            #+ layers
 
             #Remove the 'T' and 'Z' characters from the DateColumn
             data['datetime'] = data['datetime'].str.replace('T', '').str.replace('Z', '')
             
-            if locations[k] == 'SJSU':
-                #Convert the DateColumn to datetime - different format for SJSU
-                data['datetime'] = pd.to_datetime(data['datetime'], format='%Y%m%d%H%M%S.%f', errors='coerce')
-                
-            else:
-                #Convert the DateColumn to datetime
-                data['datetime'] = pd.to_datetime(data['datetime'], format='%Y%m%d%H%M%S.%f')
+            #Convert the DateColumn to datetime
+            data['datetime'] = pd.to_datetime(data['datetime'], format='%Y%m%d%H%M%S.%f')
 
             #Round the fractional seconds to whole seconds
             data['datetime'] = data['datetime'].dt.round('S')
