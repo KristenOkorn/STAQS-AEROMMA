@@ -30,12 +30,12 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
 #select level of tempo data to use
-level = 'L2'
+level = 'L3'
 
 #filter for time?
 timefilter = 'yes'
 
-#Prompt user to select folder for analysis
+#Prompt user to select the GCAS folder
 path = askdirectory(title='Select Folder for analysis').replace("/","\\")
 
 #Get the list of files from this directory
@@ -203,7 +203,10 @@ for i in range(len(fileList)):
     #Now load in the tempo data for this date
     
     #Choose domain for TEMPO data
-    locname = 'LAbasin'
+    if level == 'L2':
+        locname = 'LAbasin'
+    elif level == 'L3':
+        locname = 'LAbasinL3'
     bbox = (-119, 33.4, -116.4, 34.7)
     #bbox = (-118.6, 33.8, -117, 34.2)
     bdate = '{}-{}-{}'.format(year,month,day)
@@ -224,15 +227,18 @@ for i in range(len(fileList)):
     #ex: C:\Users\okorn\Documents\2023 STAQS\LAbasin if workdir = LAbasin
 
     #Look through the descriptions for the key we need
-    descdf = api.descriptions()
-    #pull out the one we want 
-    tempokey = 'tempo.l2.hcho.vertical_column'
-    #other ones that might be useful
-    #tempo.l2.no2.vertical_column_troposphere
-    #tempo.l2.hcho.fitted_slant_column
-    #tempo.l2.o3tot.column_amount_o3
-    #tempo.l3.hcho.vertical_column
-    #tempo.l3.o3tot.column_amount_o3
+    #descdf = api.descriptions()
+    
+    if level == 'L2':
+        #pull out the one we want 
+            tempokey = 'tempo.l2.hcho.vertical_column'
+            #other ones that might be useful
+            #tempo.l2.no2.vertical_column_troposphere
+            #tempo.l2.hcho.fitted_slant_column
+            #tempo.l2.o3tot.column_amount_o3
+    elif level == 'L3':
+        tempokey = 'tempo.l3.hcho.vertical_column'
+        #tempo.l3.o3tot.column_amount_o3
 
     #Use pyrsig to pull this data (KO took out xr to fix error)
     dff = api.to_dataframe(tempokey)
@@ -341,7 +347,7 @@ for i in range(len(fileList)):
                             
                    #convert the ppb value to molec/cm2
                    #pod_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-                   pod_hcho = hcho_list[l] * (1/daily_temp) * 1 * (6.022/0.0821) * (10**17)
+                   pod_hcho = hcho_list[l] * (1/daily_temp) * 2000 * (6.022/0.0821) * (10**13)
                    
                    #transform the lat/lon before plotting
                    pod_x, pod_y = transform(lon_lat_proj, proj_qm, podlongitudes[k], podlatitudes[k])
@@ -399,7 +405,7 @@ for i in range(len(fileList)):
                     scaqmd_hcho = 0
                 else: #otherwise, convert normally
                     #scaqmd_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-                    scaqmd_hcho = hcho_list[l] * (1/daily_temp) * 1 *(6.022/0.0821) * (10**17)
+                    scaqmd_hcho = hcho_list[l] * (1/daily_temp) * 2000 *(6.022/0.0821) * (10**13)
                     
                 #transform the lat/lon before plotting
                 scaqmd_x, scaqmd_y = transform(lon_lat_proj, proj_qm, slongitudes[kk], slatitudes[kk])
@@ -435,6 +441,6 @@ for i in range(len(fileList)):
     #save to a different folder so we don't confuse the script on the next iteration
     Spath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\TEMPO HCHO Outputs\\'
     #Create the full path with the figure name
-    savePath = os.path.join(Spath,'TEMPO_GCAS_HCHO_map_{}_{}_{}_1m'.format(year,month,day))
+    savePath = os.path.join(Spath,'TEMPO_L3_GCAS_HCHO_map_{}_{}_{}_2000m'.format(year,month,day))
     # Save the figure to a filepath
     fig.savefig(savePath)
