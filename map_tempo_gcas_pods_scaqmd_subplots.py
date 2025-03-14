@@ -89,7 +89,7 @@ global_vmin = []
 global_vmax = []
 
 #Initialize subplots
-fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
+fig, axes = plt.subplots(1, len(dates), figsize=(20, 5), sharex=True, sharey=True)
 
 #------------------------------------------------------------
 #Load in the TEMPO data to get the min/max over all dates
