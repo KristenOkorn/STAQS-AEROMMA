@@ -14,12 +14,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+from datetime import timedelta
 
 #get the relevant location data for each
-#locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
-#pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
-locations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
-pods = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
+locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
+pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
+#locations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
+#pods = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
 
 #pollutant?
 pollutant = 'HCHO'
@@ -117,6 +118,11 @@ for n in range(len(locations)):
         pod.columns.values[0] = 'INSTEP HCHO'
         #add a column for altitude - will all be 0
         pod['INSTEP altitude'] = 0
+        
+        #need to get in UTC time to match the DC-8 & Pandora
+        #L5 & L9 already good, convert the rest
+        if pods[n] != 'YPODL5' or pods[n] != 'YPODL9':
+            pod.index = pod.index + timedelta(hours = 7)
     
     #-------------------------------------
     #now load in the matching SCAQMD data - HCHO
