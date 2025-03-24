@@ -8,7 +8,8 @@ Then layer pods & SQADMD sites
 
 Makes subplots for each day
 
-Also compare with models - HRRR is with the tempo data
+Update 3/20/25 - I should add code here to get the actual correct range of pod values during the overpass and average them
+Same thing with the pod temperature (in local not UTC except L5)
 
 Also add TEMPO column to all altitude plots
 @author: okorn
@@ -17,17 +18,13 @@ Also add TEMPO column to all altitude plots
 import pandas as pd
 import os
 import numpy as np
-from datetime import datetime, timedelta
-from tkinter.filedialog import askdirectory
+from datetime import timedelta
 import netCDF4 as nc
 
 from pyproj import Proj, transform
-import xarray as xr
 import pyrsig
 import pycno
-import getpass
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
 
 #select level of tempo data to use
 level = 'L3'
@@ -35,54 +32,12 @@ level = 'L3'
 #----Get set up for the ground data----
 
 #need to pluck out just the lat/lon pairs that are relevant to each pod location
-podlocations = ['TMF','Whittier','Redlands']#'AFRC','Caltech',
-podlatitudes = [34.38189,33.97676,34.05985]#34.95991,34.13685,
-podlongitudes = [-117.67809,-118.03032,-117.14573]#-117.88107,-118.12608,
-pods = ['YPODA2','YPODA7','YPODL5']
+locations = ['TMF','Whittier','Redlands','AFRC','Caltech','St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park']
+latitudes = [34.95991,34.38189,34.13685,33.97676,34.05985,33.9185,33.89011,33.87049,33.83718,33.82494,33.81917,33.80229,33.78136,33.78199,33.78607]
+longitudes = [-117.88107,-117.67809,-118.12608,-118.03032,-117.14573,-118.40796,-118.4016,-118.3129,-118.33148,-118.26844,-118.21152,-118.22021,-118.21363,-118.26758,-118.2864]
 
-#split into pods vs scaqmd
-slocations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park']#'AFRC','Caltech',
-slatitudes = [33.9185,33.89011,33.87049,33.83718,33.82494,33.81917,33.80229,33.78136,33.78199,33.78607]#34.95991,34.13685,
-slongitudes = [-118.40796,-118.4016,-118.3129,-118.33148,-118.26844,-118.21152,-118.22021,-118.21363,-118.26758,-118.2864]#-117.88107,-118.12608,
-
-#sites & dates where we have data overlapping with GCAS
+#dates where we have data overlapping with GCAS
 dates = ['2023-08-22','2023-08-23','2023-08-25','2023-08-26']
-Whittier_HCHO = [2.04375,2.14523,2.93427,'NaN']
-Whittier_alt = [8663.8766,6726.1166,9049.99255,'NaN']
-TMF_HCHO = [2.04375,2.14523,2.93427,'NaN']
-TMF_alt = [8663.877,6726.1167,9049.9926,'NaN']
-Redlands_HCHO = [2.04375,2.14523,2.93427,'NaN']
-Redlands_alt=[8663.87657,6726.1166,9049.99255,'NaN']
-StAnthony_HCHO = [2.42,0.49,3.02,0]
-StAnthony_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-StAnthony_temp = [294.261,293.622,292.556,293.311]
-ManhattanBeach_HCHO = [0,0,0,0]
-ManhattanBeach_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-ManhattanBeach_temp = [294.261,293.622,292.556,293.311]
-GuenserPark_HCHO = [0,0,2.42,2.48]
-GuenserPark_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-GuenserPark_temp = [294.261,293.622,292.556,293.311]
-ElmAve_HCHO = [0,0.04,1.64,0.46]
-ElmAve_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-ElmAve_temp = [294.261,293.622,292.556,293.311]
-Judson_HCHO = [0,0,1.29,0]
-Judson_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-Judson_temp = [296.25,296.761,295.35,296.856]
-StLuke_HCHO = [0,0,1.73,0]
-StLuke_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-StLuke_temp = [296.25,296.761,295.35,296.856]
-Hudson_HCHO = [0.27,1.98,2.41,0]
-Hudson_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-Hudson_temp = [296.25,296.761,295.35,296.856]
-InnerPort_HCHO = [1.24,2.39,1.33,0]
-InnerPort_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-InnerPort_temp = [296.25,296.761,295.35,296.856]
-FirstMethodist_HCHO = [4,0.24,1.59,3.57]
-FirstMethodist_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-FirstMethodist_temp = [296.25,296.761,295.35,296.856]
-HarborPark_HCHO = [0,0,0,0]
-HarborPark_alt = [6805.2603,5657.095,9043.99505,5584.2833]
-HarborPark_temp = [296.25,296.761,295.35,296.856]
 
 #Create empty min/max to hold the values of the TEMPO data
 global_vmin = []
@@ -90,6 +45,12 @@ global_vmax = []
 
 #Initialize subplots
 fig, axes = plt.subplots(1, len(dates), figsize=(20, 5), sharex=True, sharey=True)
+
+#get the matching ground data for plotting later
+matchPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\GCAS HCHO Outputs'
+matchfileName = 'GCAS_pod_match.csv'
+matchfilepath = os.path.join(matchPath, matchfileName)
+match = pd.read_csv(matchfilepath,index_col=0) 
 
 #------------------------------------------------------------
 #Load in the TEMPO data to get the min/max over all dates
@@ -324,113 +285,18 @@ for j, date in enumerate(dates):
     #edgecolor='black', linewidth=0.5,
         
     #----------------------------------------------
-    #Now add the pod data -  loop through each locations
-    for k in range(len(podlocations)):
-       #get the right pod
-       if podlocations[k] == 'Redlands':
-           hcho_list = Redlands_HCHO
-           alt_list = Redlands_alt
-       elif podlocations[k] == 'Whittier':
-           hcho_list = Whittier_HCHO
-           alt_list = Whittier_alt
-       elif podlocations[k] == 'TMF':
-           hcho_list = TMF_HCHO    
-           alt_list = TMF_alt
+    #Now add the ground data - both pods & scaqmd
+    for k in range(len(locations)):
        
-       #make sure we have HCHO data on that day
-       if hcho_list[j] != 'NaN':
-           #get the temperature data to convert
-           tempfilename = '{}_temp.csv'.format(pods[k])
-           #get the full file path & read it in
-           podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
-           tempfilepath = os.path.join(podPath, tempfilename)
-           temp = pd.read_csv(tempfilepath,index_col=0) 
-           #remove any negatives
-           temp = temp[temp.iloc[:, 0] >= 0]
-           #Rename the index to match that of the pandora
-           temp = temp.rename_axis('datetime')
-           #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-           temp.index = pd.to_datetime(temp.index)
-           #retime to get daily measurements
-           temp = temp.resample('D').median()
-           #Change the temperature column name
-           temp.columns.values[0] = 'temperature'
-                    
-           #get the median temperature for this day
-           daily_temp = temp.loc[dates[j]][0]
-                    
-           #convert the ppb value to molec/cm2
-           #pod_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-           pod_hcho = hcho_list[j] * (1/daily_temp) * 2000 * (6.022/0.0821) * (10**13)
-           
-           #transform the lat/lon before plotting
-           pod_x, pod_y = transform(lon_lat_proj, proj_qm, podlongitudes[k], podlatitudes[k])
-           
-           #get the necessary color and scatter  
-           ax.scatter(pod_x, pod_y,c=hcho_list[j], cmap=qm.get_cmap(), norm=qm.norm, marker = 's',edgecolor='white', s=40)
-           
-    for kk in range(len(slocations)):
-        if slocations[kk] == 'St Anthony':
-            hcho_list = StAnthony_HCHO    
-            alt_list = StAnthony_alt
-            temp_list = StAnthony_temp
-        elif slocations[kk] == 'Manhattan Beach':
-            hcho_list = ManhattanBeach_HCHO    
-            alt_list = ManhattanBeach_alt 
-            temp_list = ManhattanBeach_temp
-        elif slocations[kk] == 'Guenser Park':
-            hcho_list = GuenserPark_HCHO    
-            alt_list = GuenserPark_alt 
-            temp_list = GuenserPark_temp 
-        elif slocations[kk] == 'Elm Avenue':
-            hcho_list = ElmAve_HCHO    
-            alt_list = ElmAve_alt 
-            temp_list = ElmAve_temp
-        elif slocations[kk] == 'Judson':
-            hcho_list = Judson_HCHO    
-            alt_list = Judson_alt   
-            temp_list = Judson_temp
-        elif slocations[kk] == 'St Luke':
-            hcho_list = StLuke_HCHO    
-            alt_list = StLuke_alt  
-            temp_list = StLuke_temp 
-        elif slocations[kk] == 'Hudson':
-            hcho_list = Hudson_HCHO    
-            alt_list = Hudson_alt  
-            temp_list = Hudson_temp
-        elif slocations[kk] == 'InnerPort':
-            hcho_list = InnerPort_HCHO    
-            alt_list = InnerPort_alt
-            temp_list = InnerPort_temp
-        elif slocations[kk] == 'FirstMethodist':
-            hcho_list = FirstMethodist_HCHO    
-            alt_list = FirstMethodist_alt    
-            temp_list = FirstMethodist_temp
-        elif slocations[kk] == 'HarborPark':
-            hcho_list = HarborPark_HCHO    
-            alt_list = HarborPark_alt 
-            temp_list = HarborPark_temp
-            
-        #get the average temperature for this day
-        daily_temp = temp_list[j]
-                 
-        #convert the ppb value to molec/cm2
-        if hcho_list[j] == 0: #need to add a stop if it read 0
-            scaqmd_hcho = 0
-        else: #otherwise, convert normally
-            #scaqmd_hcho = (1/hcho_list[l])*(2000)*(1/daily_temp)*(1/0.08206)*(10**-10)*(6.022*(10**-23))
-            scaqmd_hcho = hcho_list[j] * (1/daily_temp) * 2000 *(6.022/0.0821) * (10**13)
-            
         #transform the lat/lon before plotting
-        scaqmd_x, scaqmd_y = transform(lon_lat_proj, proj_qm, slongitudes[kk], slatitudes[kk])
-  
+        pod_x, pod_y = transform(lon_lat_proj, proj_qm, longitudes[k], latitudes[k])
+        
         #get the necessary color and scatter  
-        ax.scatter(scaqmd_x, scaqmd_y,c=hcho_list[j], cmap=qm.get_cmap(), norm=qm.norm, edgecolor='white', s=40)
+        ax.scatter(pod_x, pod_y,c=match.loc[match.index[k], date], cmap=qm.get_cmap(), norm=qm.norm, marker = 's',edgecolor='white', s=40)
         
         #Remove x&y axis labels
         ax.set_xlabel('')
         ax.set_ylabel('')
-    
 #----------------------------------------------
 #Final beautification
 
