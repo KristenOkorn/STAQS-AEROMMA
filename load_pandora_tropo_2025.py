@@ -16,7 +16,8 @@ import pandas as pd
 import os
 
 #loop through locations & pollutants
-locations = ['Ames','Richmond','CSUS','TMF','AFRC','Whittier','Bayonne','Bristol','Bronx','CapeElizabeth','Cornwall','EastProvidence','Londonderry','Lynn','MadisonCT','ManhattanNY','NewBrunswick','NewHaven','OldField','Philadelphia','Pittsburgh','Queens','WashingtonDC','Westport']
+#locations = ['Ames','Richmond','CSUS','TMF','AFRC','Whittier','SJSU','Bayonne','Bristol','Bronx','CapeElizabeth','Cornwall','EastProvidence','Londonderry','Lynn','MadisonCT','ManhattanNY','NewBrunswick','NewHaven','OldField','Philadelphia','Pittsburgh','Queens','WashingtonDC','Westport']
+locations = ['Whittier','TMF','AFRC']
 pollutant = 'HCHO'
 
 #load in the Pandora data
@@ -70,9 +71,8 @@ for k in range(len(locations)):
                                 14, #temperature
                                 64, #max_vert_tropo
                                 67, #top_height
-                                13, #pressure
-                                3]  #SZA
-                                #+ list(range(69, len(data.columns))) #layer1+
+                                13, #pressure, SZA is 3
+                                3]  + list(range(68, len(data.columns))) #layer1+
 
             elif pollutant == 'HCHO':
                 desired_cols = [0, #datetime
@@ -82,15 +82,14 @@ for k in range(len(locations)):
                                 14, #temperature
                                 51, #max vert tropo
                                 52, #top height
-                                13, #pressure
-                                3] #SZA
-                                #+ list(range(55, len(data.columns))) #layer1+
+                                13, #pressure, SZA is 3
+                                3]  + list(range(53, len(data.columns))) #layer1+
                     
                 #make a list to hold the layer data names
-                #layers = []
+                layers = []
                 #get names for the layer columns
-                #for x in range(55, len(data.columns)):
-                    #layers.append(f'layer_col{x}')
+                for x in range(53, len(data.columns)):
+                    layers.append(f'layer_col{x}')
                     
             #Only keep the datetime & surface concentration columns
             data = data.iloc[:, desired_cols]
@@ -104,8 +103,7 @@ for k in range(len(locations)):
                             'max_vert_tropo',
                             'top_height',
                             'pressure',
-                            'SZA'] 
-                            #+ layers
+                            'SZA'] + layers
 
             #Remove the 'T' and 'Z' characters from the DateColumn
             data['datetime'] = data['datetime'].str.replace('T', '').str.replace('Z', '')
