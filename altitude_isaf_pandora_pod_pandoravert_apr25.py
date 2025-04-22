@@ -89,7 +89,55 @@ for n in range(len(locations)):
     
     #convert km to m
     pandora.iloc[::2, :] = pandora.iloc[::2, :] * 1000
-    
+   
+    #-------------------------------------
+    #next load in the pandora tropo csv's - skip for sites without one
+    pandora2 = pd.read_csv(pandorafilepath,index_col=1)
+    #Reset the seconds to zero in the index
+    pandora2.index = pandora2.index.str.replace(r'\d{2}$', '00')
+    #Convert the index to a DatetimeIndex
+    pandora2.index = pd.to_datetime(pandora2.index)#rename index to datetime
+    pandora2 = pandora2.rename_axis('datetime')
+    #Filter so the lowest quality flag is omitted
+    pandora2 = pandora2.loc[pandora2['quality_flag'] != 12]
+    #get rid of any unnecessary columns
+    pandora2 = pandora2[['HCHO','temperature','top_height','max_vert_tropo']]
+    #resample to minutely - since pod data will be minutely
+    #pandora = pandora.resample('T').mean()
+    #Change the pollutant column name
+    pandora2.columns.values[0] = 'Pandora Tropo HCHO'
+    #remove any negatives
+    pandora2 = pandora2[pandora2.iloc[:, 0] >= 0]
+    #convert from mol/m2 to ppb
+    pandora2['Pandora Tropo HCHO'] = pandora2['Pandora Tropo HCHO']*0.08206*pandora2['temperature']*1000/(pandora2['max_vert_tropo'])
+    #-------------------------------------
+    #now load in the surface pandora data
+
+    #get the filename for pandora
+    surfpandorafilename = "{}_surface_extra_HCHO.csv".format(locations[n])
+    #join the path and filename
+    surfpandorafilepath = os.path.join(pandoraPath, surfpandorafilename)
+    surfpandora = pd.read_csv(surfpandorafilepath,index_col=1)
+    #Reset the seconds to zero in the index
+    surfpandora.index = surfpandora.index.str.replace(r'\d{2}$', '00')
+    #Convert the index to a DatetimeIndex
+    surfpandora.index = pd.to_datetime(surfpandora.index)#rename index to datetime
+    surfpandora = surfpandora.rename_axis('datetime')
+    #Filter to only use high quality data
+    surfpandora = surfpandora.loc[surfpandora['quality_flag'] != 12]
+    #hold onto the HCHO data and relevant parameters only
+    surfpandora = surfpandora[['HCHO','temperature','top_height','max_vert_tropo']]
+    #resample to minutely - since pod data will be minutely
+    #surfpandora = surfpandora.resample('T').mean()
+    #Change the pollutant column name
+    surfpandora.columns.values[0] = 'Pandora Surface HCHO'
+    #remove any negatives
+    surfpandora = surfpandora[surfpandora.iloc[:, 0] >= 0]
+    #convert mol/m3 to ppb
+    surfpandora['Pandora Surface HCHO'] = surfpandora['Pandora Surface HCHO']*0.08206*surfpandora['temperature']*(10**(9))/1000
+    #add a column for altitude - will all be 0
+    surfpandora['Surface Pandora altitude'] = 0
+ 
     #-------------------------------------
     podPath = 'C:\\Users\\kokorn\\Documents\\AGES+\\Pods\\'
     #get the filename for the pod
@@ -120,14 +168,18 @@ for n in range(len(locations)):
     #filter to match times for pandora also - get the start and end times from the merge file
     start_time = merge.index[0]
     end_time = merge.index[-1]
-    #now filter based on this
+    #now filter pandora based on this
     pandora = pandora[(pandora.index >= start_time) & (pandora.index <= end_time)]
+    pandora2 = pandora2[(pandora2.index >= start_time) & (pandora2.index <= end_time)]
+    surfpandora = surfpandora[(surfpandora.index >= start_time) & (surfpandora.index <= end_time)]
     
     #-------------------------------------
     
     #remove missing values for ease of plotting
     merge = merge.dropna()
     pandora = pandora.dropna()
+    pandora2 = pandora2.dropna()
+    surfpandora = surfpandora.dropna()
     
     #-------------------------------------
     #figure out how many days we have - for how many subplots
@@ -138,15 +190,22 @@ for n in range(len(locations)):
     # Create a dictionary to store DataFrames for each unique day
     split_dataframes = {}
     pandora_split_dataframes = {}
+    pandora2_split_dataframes = {}
+    surfpandora_split_dataframes = {}
 
     #Split the DataFrame based on unique days
     for day in unique_days_list:
         day_data = merge[merge.index.date == day]
         split_dataframes[day] = day_data
-        #now repeat for the pandora data
+        #now repeat for the pandora profile data
         pandora_day_data = pandora[pandora.index.date == day]
         pandora_split_dataframes[day] = pandora_day_data
-
+        #and the regular pandora data
+        pandora2_day_data = pandora2[pandora2.index.date == day]
+        pandora2_split_dataframes[day] = pandora2_day_data
+        #and the pandora surface data
+        surfpandora_day_data = surfpandora[surfpandora.index.date == day]
+        surfpandora_split_dataframes[day] = surfpandora_day_data
             
     #initialize figure - subplot for each day
     fig, axs = plt.subplots(num_unique_days, 1, figsize=(8, 4 * num_unique_days))
@@ -154,11 +213,56 @@ for n in range(len(locations)):
     # If there is only one subplot, make it a list to handle indexing
     if num_unique_days == 1:
         axs = [axs]
-
+        
+    #-------------------------------------    
+    #Get global min/max to standardize x & y axes
+    x_max = max(merge[' CH2O_ISAF'].max(), merge['INSTEP HCHO'].max()) 
+    y_max = merge['altitude'].max() +80
+    
+    #and use 0 for all mins - 80s are so points don't get cut off at the edges
+    x_min = 0
+    y_min = -80
+    #-------------------------------------
+    
+    #create columns as needed for pandora data
     for k, (day, df) in enumerate(split_dataframes.items()):
+        if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
+            #create a regular set of y's (altitude) for the Pandora tropo data
+            if len(pandora2_day_data) <10:
+                #Create empty rows at the end to populate
+                empty_rows = pd.DataFrame(np.nan, index=range(10-len(pandora_day_data)), columns=pandora_split_dataframes[day].columns)
+                #Append the empty rows to the DataFrame
+                pandora2_day_data = pd.concat([pandora2_day_data, empty_rows], ignore_index=True)
+                #then proceed to fill them
+                pandora2_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora2_day_data))
+            else: #proceed as normal if we have enough points
+                pandora2_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora2_day_data))
+                #also add a set of y's at 0 for the surface pandora estimatea
+                surfpandora_day_data['Pandora_alt'] = np.linspace(0, 0, len(surfpandora_day_data))
+                
+        #Add a title with the date to each subplot
+        axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
+        axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
+     
+    
+        #then plot the flight data
+        axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
+        #then plot the instep data
+        axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
+        
+        #add in the regular & surface pandora data here
+        #replace the tropo data with the median before plotting
+        pandora2_day_data['Pandora Tropo HCHO'] = np.nanmedian(pandora2_day_data['Pandora Tropo HCHO'])
+        axs[k].scatter(pandora2_day_data['Pandora Tropo HCHO'], pandora2_day_data['Pandora_alt'], label='Pandora Tropospheric Column', color='blue')
+        axs[k].scatter(surfpandora_day_data['Pandora Surface HCHO'], surfpandora_day_data['Surface Pandora altitude'], label='Pandora Surface Estimate', color='green')
+         
+    #handle the pandora vertical profile data separately
+    for k, (vday, vdf) in enumerate(pandora_split_dataframes.items()):
        #first plot the pandora data - need to reformat for vertical profiles
-       if len(pandora_day_data) >1: #have to average if more than 1 profile
-           column_averages = pandora_day_data.mean() #take the mean
+       if len(vdf) <1:
+           pass #skip plotting if there's no profile during this spiral
+       elif len(vdf) >1: #have to average if more than 1 profile
+           column_averages = vdf.mean() #take the mean
            #get the HCHO values from the evens/ odds
            x = column_averages.iloc[1::2].reset_index(drop=True)
            #separate out just the heights
@@ -167,29 +271,25 @@ for n in range(len(locations)):
            y = (y_temp.shift(-1) + y_temp) / 2
            y = y[:-1]  # Drop the last NaN created by the shift
            #and plot
-           axs[k].scatter(x, y, label='Pandora Profile', color='purple')
+           axs[k].scatter(x, y, label='Pandora Profile', color='cyan')
        else: #plot normally
            #get the HCHO values from the evens/ odds
-           x = pandora_day_data.iloc[0,1::2]  # Odd-indexed columns: 1, 3, 5, ...
+           x = vdf.iloc[0,1::2]  # Odd-indexed columns: 1, 3, 5, ...
            #separate out just the heights
-           y_temp = pandora_day_data.iloc[0, 0::2]  # columns 0, 2, 4, ...
+           y_temp = vdf.iloc[0, 0::2]  # columns 0, 2, 4, ...
            #get the average height to use
            y = (y_temp.shift(-1) + y_temp) / 2
            y = y[:-1]  # Drop the last NaN created by the shift
            #and plot
-           axs[k].scatter(x, y, label='Pandora Profile', color='purple')
+           axs[k].scatter(x, y, label='Pandora Profile', color='cyan')
             
-       #then plot the flight data
-       axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
-       #then plot the instep data
-       axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
-        
-       #Add a title with the date to each subplot
-       axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
-       axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
+     
         
        #Set the font size of the tick labels
        axs[k].tick_params(axis='both', labelsize=12)
+       #Standardize the axes
+       axs[k].set_xlim(x_min, x_max)
+       axs[k].set_ylim(y_min, y_max)
         
     #Increase vertical space between subplots
     plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
