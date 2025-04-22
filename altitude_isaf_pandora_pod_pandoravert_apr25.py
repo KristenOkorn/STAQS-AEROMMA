@@ -22,10 +22,11 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from datetime import timedelta
+import math
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','AFRC', 'Caltech','Redlands'] 
-pods = ['YPODA2','YPODA7','YPODR9', 'YPODG5','YPODL5'] 
+locations = ['TMF','Whittier','AFRC'] #, 'Caltech','Redlands'
+pods = ['YPODA2','YPODA7','YPODR9'] #, 'YPODG5','YPODL5'
 #locations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
 #pods = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
 
@@ -224,12 +225,13 @@ for n in range(len(locations)):
         
     #-------------------------------------    
     #Get global min/max to standardize x & y axes
-    x_max = max(merge[' CH2O_ISAF'].max(), merge['INSTEP HCHO'].max()) 
-    y_max = merge['altitude'].max() +80
+    x_max = math.ceil(max(merge[' CH2O_ISAF'].max(), merge['INSTEP HCHO'].max()))
+    y_max = math.ceil(merge['altitude'].max() +80)
     
     #and use 0 for all mins - 80s are so points don't get cut off at the edges
     x_min = 0
     y_min = -80
+    
     #-------------------------------------
     
     #create columns as needed for pandora data
@@ -258,6 +260,13 @@ for n in range(len(locations)):
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
         axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
+        
+        #Set the font size of the tick labels
+        axs[k].tick_params(axis='both', labelsize=12)
+        #Standardize the axes
+        axs[k].set_xlim(x_min, x_max)
+        axs[k].set_ylim(y_min, y_max)
+        axs[k].autoscale(False)
         
         #if pandora locations only
         if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
@@ -298,11 +307,12 @@ for n in range(len(locations)):
            #Now plot the legend for all pandora-containing subplots
            axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9)) 
         
-    #Set the font size of the tick labels
-    axs[k].tick_params(axis='both', labelsize=12)
-    #Standardize the axes
-    axs[k].set_xlim(x_min, x_max)
-    axs[k].set_ylim(y_min, y_max)
+        #Set the font size of the tick labels
+        axs[k].tick_params(axis='both', labelsize=12)
+        #Standardize the axes
+        axs[k].set_xlim(x_min, x_max)
+        axs[k].set_ylim(y_min, y_max)
+        axs[k].autoscale(False)
         
     #Increase vertical space between subplots
     plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
