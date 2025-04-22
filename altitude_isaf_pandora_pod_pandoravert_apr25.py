@@ -247,12 +247,13 @@ for n in range(len(locations)):
                 pandora2_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora2_day_data))
                 #also add a set of y's at 0 for the surface pandora estimatea
                 surfpandora_day_data['Pandora_alt'] = np.linspace(0, 0, len(surfpandora_day_data))
-                
+        
         #Add a title with the date to each subplot
         axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
-        axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
+        #If no Pandora data, add the legend here
+        if locations[n] != 'TMF' or locations[n] != 'Whittier' or locations[n] != 'AFRC':
+            axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))        
      
-    
         #then plot the flight data
         axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
         #then plot the instep data
@@ -294,7 +295,9 @@ for n in range(len(locations)):
                y = y[:-1]  # Drop the last NaN created by the shift
                #and plot
                axs[k].scatter(x, y, label='Pandora Profile', color='cyan')
-     
+           #Now plot the legend for all pandora-containing subplots
+           axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9)) 
+        
     #Set the font size of the tick labels
     axs[k].tick_params(axis='both', labelsize=12)
     #Standardize the axes
