@@ -12,8 +12,7 @@ Edited 2/5/2025 to include 3D wind in output file
 # import libraries
 import pandas as pd
 import os
-import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from tkinter.filedialog import askdirectory
 
 #Prompt user to select folder for analysis
@@ -147,8 +146,10 @@ for n in range(len(locations)):
     min_lon_bound = longitudes[n] - (1/170)
     max_lon_bound = longitudes[n] + (1/170)
     
-    #Filter the df to just include matching lat/lon
-    data = merge[(merge['latitude'] >= min_lat_bound) | (merge['latitude'] <= max_lat_bound) & ((merge['longitude'] >= min_lon_bound) & (merge['longitude'] <= max_lon_bound))]
+    data = merge[
+    (merge['latitude'] >= min_lat_bound) & (merge['latitude'] <= max_lat_bound) &
+    (merge['longitude'] >= min_lon_bound) & (merge['longitude'] <= max_lon_bound)
+    ]
 
     #save to a different folder so we don't confuse the script on the next iteration
     Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\Picarro CO2 CH4 CO\\'
