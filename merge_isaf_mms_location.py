@@ -105,8 +105,11 @@ for n in range(len(locations)):
     max_lon_bound = longitudes[n] + (1/170)
         
     #Filter the df to just include matching lat/lon
-    data = merge[(merge['latitude'] >= min_lat_bound) | (merge['latitude'] <= max_lat_bound) & ((merge['longitude'] >= min_lon_bound) & (merge['longitude'] <= max_lon_bound))]
-
+    data = merge[
+    (merge['latitude'] >= min_lat_bound) & (merge['latitude'] <= max_lat_bound) &
+    (merge['longitude'] >= min_lon_bound) & (merge['longitude'] <= max_lon_bound)
+    ]
+    
     #save to a different folder so we don't confuse the script on the next iteration
     Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF Outputs\\'
     #save out the final (raw) data
