@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Wed Apr 16 09:26:20 2025
@@ -25,19 +26,16 @@ from datetime import timedelta
 import math
 
 #get the relevant location data for each
-locations = ['TMF','Whittier','AFRC'] #, 'Caltech','Redlands'
-pods = ['YPODA2','YPODA7','YPODR9'] #, 'YPODG5','YPODL5'
+locations = ['Whittier','Caltech','Redlands'] #'TMF', 'AFRC'
+pods = ['YPODA7','YPODG5','YPODL5'] #'YPODA2', 'YPODR9
 #locations = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'AFRC'
 #pods = ['St Anthony','Manhattan Beach','Guenser Park','Elm Avenue','Judson', 'St Luke','Hudson','Inner Port','First Methodist','Harbor Park'] #'YPODR9'
-
-#pollutant?
-pollutant = 'HCHO'
 
 for n in range(len(locations)): 
     
     #-------------------------------------
     #load in the in-situ data - ISAF HCHO
-    isafPath = 'C:\\Users\\kokorn\\Documents\\AGES+\\ISAF'
+    isafPath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF Outputs\\'
     #get the filename for the pod
     isaffilename = "ISAF_HCHO_{}.csv".format(locations[n])
     #read in the first worksheet from the workbook myexcel.xlsx
@@ -54,7 +52,7 @@ for n in range(len(locations)):
     #-------------------------------------
     if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
         #now load in the pandora data
-        pandoraPath = 'C:\\Users\\kokorn\\Documents\\AGES+\\Pandora\\'
+        pandoraPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\Pandora 2023'
         #get the filename for pandora
         pandorafilename = "{}_tropo_extra_HCHO.csv".format(locations[n])
         #join the path and filename
@@ -140,7 +138,7 @@ for n in range(len(locations)):
         surfpandora['Surface Pandora altitude'] = 0
  
     #-------------------------------------
-    podPath = 'C:\\Users\\kokorn\\Documents\\AGES+\\Pods\\'
+    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
     #get the filename for the pod
     podfilename = "{}_HCHO.csv".format(pods[n])
     #read in the first worksheet from the workbook myexcel.xlsx
@@ -162,14 +160,14 @@ for n in range(len(locations)):
     if pods[n] != 'YPODL5' or pods[n] != 'YPODL9':
         pod.index = pod.index + timedelta(hours = 7)
     #-------------------------------------
-   
-    #merge our dataframes
-    merge = pd.merge(isaf,pod,left_index=True, right_index=True)
+    #'as of' merge - just to match up the time windows, not the exact times
+    merges = pd.merge_asof(isaf, pod, left_index=True, right_index=True, tolerance=pd.Timedelta('1H'),  direction='nearest')           
+    #-------------------------------------
     
     if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
         #filter to match times for pandora also - get the start and end times from the merge file
-        start_time = merge.index[0]
-        end_time = merge.index[-1]
+        start_time = isaf.index[0]
+        end_time = isaf.index[-1]
         #now filter pandora based on this
         pandora = pandora[(pandora.index >= start_time) & (pandora.index <= end_time)]
         pandora2 = pandora2[(pandora2.index >= start_time) & (pandora2.index <= end_time)]
@@ -188,21 +186,42 @@ for n in range(len(locations)):
     
     #-------------------------------------
     
-    #remove missing values for ease of plotting
-    merge = merge.dropna()
-    
     #Create a dictionary to store DataFrames for each unique day
     split_dataframes = {}
+    p2_split_dataframes = {}
+    surf_split_dataframes = {}
     
+    #-------------------------------------    
+    #Get global min/max to standardize x & y axes
+    x_max = math.ceil(max(merges[' CH2O_ISAF'].max(), merges['INSTEP HCHO'].max()))
+    y_max = math.ceil(merges['altitude'].max() +80)
+    
+    #and use 0 for all mins - 80s are so points don't get cut off at the edges
+    x_min = 0
+    y_min = -80
+    
+    #overwrite y_max if whittier - one high point messing up the scale
+    if locations[n] == 'Whittier':
+        y_max = math.ceil(isaf.loc[isaf['altitude'] < 5000, 'altitude'].max() + 80)
+        
     #-------------------------------------
     #figure out how many days we have - for how many subplots
-    num_unique_days = len(np.unique(merge.index.date))
+    num_unique_days = len(np.unique(isaf.index.date))
     #also get the list of them to split by
-    unique_days_list = np.unique(merge.index.date).tolist()
+    unique_days_list = np.unique(isaf.index.date).tolist()
+    
+    #initialize figure - subplot for each day
+    fig, axs = plt.subplots(num_unique_days, 1, figsize=(8, 4 * num_unique_days))
+    
+    # If there is only one subplot, make it a list to handle indexing
+    if num_unique_days == 1:
+        axs = [axs]
+    
+    #-------------------------------------
     
     #Split the DataFrame based on unique days
     for day in unique_days_list:
-        day_data = merge[merge.index.date == day]
+        day_data = isaf[isaf.index.date == day]
         split_dataframes[day] = day_data
     
         if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
@@ -210,72 +229,38 @@ for n in range(len(locations)):
             pandora_day_data = pandora[pandora.index.date == day]
             pandora_split_dataframes[day] = pandora_day_data
             #and the regular pandora data
-            pandora2_day_data = pandora2[pandora2.index.date == day]
-            pandora2_split_dataframes[day] = pandora2_day_data
+            p2_day_data = pandora2[pandora2.index.date == day]
+            p2_split_dataframes[day] = p2_day_data
             #and the pandora surface data
-            surfpandora_day_data = surfpandora[surfpandora.index.date == day]
-            surfpandora_split_dataframes[day] = surfpandora_day_data
-                
-    #initialize figure - subplot for each day
-    fig, axs = plt.subplots(num_unique_days, 1, figsize=(8, 4 * num_unique_days))
-    
-    # If there is only one subplot, make it a list to handle indexing
-    if num_unique_days == 1:
-        axs = [axs]
-        
-    #-------------------------------------    
-    #Get global min/max to standardize x & y axes
-    x_max = math.ceil(max(merge[' CH2O_ISAF'].max(), merge['INSTEP HCHO'].max()))
-    y_max = math.ceil(merge['altitude'].max() +80)
-    
-    #and use 0 for all mins - 80s are so points don't get cut off at the edges
-    x_min = 0
-    y_min = -80
+            surf_day_data = surfpandora[surfpandora.index.date == day]
+            surf_split_dataframes[day] = surf_day_data
     
     #-------------------------------------
     
     #create columns as needed for pandora data
-    for k, (day, df) in enumerate(split_dataframes.items()):
+    for k, (day, df) in enumerate(p2_split_dataframes.items()):
         if locations[n] == 'Whittier' or locations[n] == 'TMF' or locations[n] == 'AFRC':
+            # Get daily data for Pandora and surface
+            p2_day_data = p2_split_dataframes.get(day)
+            surf_day_data = surf_split_dataframes.get(day)
+            
             #create a regular set of y's (altitude) for the Pandora tropo data
-            if len(pandora2_day_data) <10:
-                #Create empty rows at the end to populate
-                empty_rows = pd.DataFrame(np.nan, index=range(10-len(pandora_day_data)), columns=pandora_split_dataframes[day].columns)
-                #Append the empty rows to the DataFrame
-                pandora2_day_data = pd.concat([pandora2_day_data, empty_rows], ignore_index=True)
-                #then proceed to fill them
-                pandora2_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora2_day_data))
-            else: #proceed as normal if we have enough points
-                pandora2_day_data['Pandora_alt'] = np.linspace(0, max(df['altitude']), len(pandora2_day_data))
-                #also add a set of y's at 0 for the surface pandora estimatea
-                surfpandora_day_data['Pandora_alt'] = np.linspace(0, 0, len(surfpandora_day_data))
+            df['altitude'] = np.linspace(0, y_max, len(df))
+            #now median
+            df['Pandora Tropo HCHO'] = np.nanmedian(df['Pandora Tropo HCHO'])
+            #and create a linspace of only 15 points so its not too crowded on the plot
+            lin_hcho = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['Pandora Tropo HCHO']
+            lin_alt = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['altitude']
+            #now plot the pandora tropo data
+            axs[k].scatter(lin_hcho, lin_alt, label='Pandora Tropo HCHO', color='blue')
+            
+            #also add a set of y's at 0 for the surface pandora estimatea
+            surf_day_data['Pandora_alt'] = np.linspace(0, 0, len(surf_day_data))
+            #plot the surface data in the same loop to avoid looping issues
+            axs[k].scatter(surf_day_data['Pandora Surface HCHO'], surf_day_data['Surface Pandora altitude'], label='Pandora Surface Estimate', color='green')
         
-        #Add a title with the date to each subplot
-        axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
-        #If no Pandora data, add the legend here
-        if locations[n] != 'TMF' or locations[n] != 'Whittier' or locations[n] != 'AFRC':
-            axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))        
-     
-        #then plot the flight data
-        axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
-        #then plot the instep data
-        axs[k].scatter(df['INSTEP HCHO'], df['INSTEP altitude'], label='INSTEP', color='red')
-        
-        #Set the font size of the tick labels
-        axs[k].tick_params(axis='both', labelsize=12)
-        #Standardize the axes
-        axs[k].set_xlim(x_min, x_max)
-        axs[k].set_ylim(y_min, y_max)
-        axs[k].autoscale(False)
-        
-        #if pandora locations only
-        if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
-            #add in the regular & surface pandora data here
-            #replace the tropo data with the median before plotting
-            pandora2_day_data['Pandora Tropo HCHO'] = np.nanmedian(pandora2_day_data['Pandora Tropo HCHO'])
-            axs[k].scatter(pandora2_day_data['Pandora Tropo HCHO'], pandora2_day_data['Pandora_alt'], label='Pandora Tropospheric Column', color='blue')
-            axs[k].scatter(surfpandora_day_data['Pandora Surface HCHO'], surfpandora_day_data['Surface Pandora altitude'], label='Pandora Surface Estimate', color='green')
-         
+    #-------------------------------------
+    
     #vertical pandora data for pandora locations only
     if locations[n] == 'TMF' or locations[n] == 'Whittier' or locations[n] == 'AFRC':
         #handle the pandora vertical profile data separately
@@ -304,15 +289,28 @@ for n in range(len(locations)):
                y = y[:-1]  # Drop the last NaN created by the shift
                #and plot
                axs[k].scatter(x, y, label='Pandora Profile', color='cyan')
-           #Now plot the legend for all pandora-containing subplots
-           axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9)) 
         
-        #Set the font size of the tick labels
-        axs[k].tick_params(axis='both', labelsize=12)
-        #Standardize the axes
-        axs[k].set_xlim(x_min, x_max)
-        axs[k].set_ylim(y_min, y_max)
-        axs[k].autoscale(False)
+    
+        #Add a title with the date to each subplot
+        axs[k].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
+     
+        #then plot the flight data
+        for k, (day, df) in enumerate(split_dataframes.items()):
+            axs[k].scatter(df[' CH2O_ISAF'], df['altitude'], label='ISAF', color='black')
+        
+            #then plot the instep data
+            pod_filtered = pod[(pod.index >= df.index.min()) & (pod.index <= df.index.max())]
+            axs[k].scatter(pod_filtered['INSTEP HCHO'], pod_filtered['INSTEP altitude'], label='INSTEP', color='red')
+            
+            #Set the font size of the tick labels
+            axs[k].tick_params(axis='both', labelsize=12)
+            #Standardize the axes
+            axs[k].set_xlim(x_min, x_max)
+            axs[k].set_ylim(y_min, y_max)
+            axs[k].autoscale(False)
+            
+            #Now plot the legend
+            axs[k].legend(loc='upper right', bbox_to_anchor=(1.0, 0.7)) 
         
     #Increase vertical space between subplots
     plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
@@ -323,12 +321,12 @@ for n in range(len(locations)):
     axs[-1].set_xlabel('HCHO (ppb)', ha='center',fontsize=16)
     #Add an overall title to the plot
     fig.text(0.5,0.91,'{}'.format(locations[n]), ha = 'center', fontsize=16, weight = 'bold')
-
+    
     #Display the plot
     plt.show()
 
     #save to a different folder so we don't confuse the script on the next iteration
-    Spath = 'C:\\Users\\kokorn\\Documents\\AGES+\\Plots\\'
+    Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\ISAF HCHO Plots\\'
     #Create the full path with the figure name
     savePath = os.path.join(Spath,'altitude_HCHO_vert_{}'.format(locations[n]))
     #Save the figure to a filepath
