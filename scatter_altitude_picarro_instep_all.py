@@ -6,7 +6,9 @@ Plot Picarro data on the same axes as INSTEP
 
 Does CH4 and CO2 in the same script
 
-Also does HALO & TCCON in the same script
+Also does TCCON in the same script
+
+HALO is a different aircraft so no overlap with DC-8 - make separate HALO plots
 
 @author: okorn
 """
@@ -19,8 +21,8 @@ import numpy as np
 import math
 
 #get the relevant location data for each
-locations = ['Whittier','Redlands','Caltech'] #'AFRC', 'TMF',
-pods = ['YPODA7','YPODL5','YPODG5'] #'YPODR9', 'YPODA2',
+locations = ['Whittier','Redlands','Caltech','TMF'] #'AFRC', 'TMF',
+pods = ['YPODA7','YPODL5','YPODG5','YPODA2'] #'YPODR9', 'YPODA2',
 
 for n in range(len(locations)): 
     #-------------------------------------
@@ -93,20 +95,7 @@ for n in range(len(locations)):
     #get the data into UTC (from PDT) #different for each pod!!
     if locations[n] != 'Redlands':
         podco2.index += pd.to_timedelta(7, unit='h')
-     
-    #-------------------------------------
-    #now load in the HALO data - CH4
-    haloPath = 'C:\\Users\\okorn\\Documents\\2023 STAQS\\HALO XCH4\\'
-    #get the filename for the pod
-    halofilename = "HALO_XCH4_{}.csv".format(locations[n])
-    #read in the first worksheet from the workbook myexcel.xlsx
-    halofilepath = os.path.join(haloPath, halofilename)
-    halo = pd.read_csv(halofilepath,index_col=0)  
-    #remove any negatives
-    halo = halo[halo.iloc[:, 0] >= 0]
-    #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-    halo.index = pd.to_datetime(halo.index,format="%Y-%m-%d %H:%M:%S",errors='coerce')
-    
+
     #-------------------------------------
     
     #now load in the matching TCCON data - Caltech & AFRC only
@@ -143,14 +132,20 @@ for n in range(len(locations)):
     
     #-------------------------------------    
     #Get global min/max to standardize x & y axes
-    x_max_ch4 = math.ceil(max(picarroch4['CH4_ppm'].max(), podch4['INSTEP CH4'].max(), halo['XCH4'].max()))
-    x_min_ch4 = math.ceil(min(picarroch4['CH4_ppm'].min(), podch4['INSTEP CH4'].min(), halo['XCH4'].min())) -0.12
+    x_max_ch4 = math.ceil(max(picarroch4['CH4_ppm'].max(), podch4['INSTEP CH4'].max()))
+    x_min_ch4 = math.ceil(min(picarroch4['CH4_ppm'].min(), podch4['INSTEP CH4'].min())) -0.15
     y_max_ch4 = picarro['altitude'].max() +80
 
     #and repeat for co2
     x_max_co2 = math.ceil(max(picarroco2['CO2_ppm'].max(), podco2['INSTEP CO2'].max()))
     x_min_co2 = math.ceil(min(picarroco2['CO2_ppm'].min(), podco2['INSTEP CO2'].min())) -10
     y_max_co2 = math.ceil(picarro['altitude'].max() +80)
+    
+    #overwrite y_max if whittier - one high point messing up the scale
+    if locations[n] == 'Whittier':
+        y_max_ch4 = math.ceil(picarro.loc[picarro['altitude'] < 5000, 'altitude'].max() + 80)
+        y_max_co2 = math.ceil(picarro.loc[picarro['altitude'] < 5000, 'altitude'].max() + 80)
+        
         
     #and use 0 for y's, but with cushion to keep edge values in plotting
     y_min = -10
@@ -167,7 +162,6 @@ for n in range(len(locations)):
     co2_split_dataframes = {}
     picarroch4_split_dataframes = {}
     picarroco2_split_dataframes = {}
-    halo_split_dataframes = {}
     tcconch4_split_dataframes = {}
     tcconco2_split_dataframes = {}
 
@@ -185,9 +179,6 @@ for n in range(len(locations)):
         #and repeat for pod co2
         co2_day_data = podco2[podco2.index.date == day]
         co2_split_dataframes[day] = co2_day_data
-        #and repeat for halo ch4
-        halo_day_data = halo[halo.index.date == day]
-        halo_split_dataframes[day] = halo_day_data
         if locations[n] == 'Caltech' or locations[n] == 'AFRC':
             #and repeat for tccon ch4
             tcconch4_day_data = tcconch4[tcconch4.index.date == day]
@@ -212,11 +203,6 @@ for n in range(len(locations)):
     for k, (day, df) in enumerate(picarroco2_split_dataframes.items()):
         #CO2 in the left column
         axs[k,0].scatter(df['CO2_ppm'], df['altitude'], label='Picarro', color='black')
-        
-    #add the halo ch4 data if applicable
-    for k, (day, df) in enumerate(halo_split_dataframes.items()):
-        #CH4 in the right column
-        axs[k,1].scatter(df['XCH4'], df['altitude'], label='HALO', color='cyan')
         
     #add the tccon ch4 data if applicable
     if locations[n] == 'Caltech' or locations[n] == 'AFRC':
