@@ -12,8 +12,8 @@ header lines to edit: 115, 123, 130, 132, 138
 #import libraries
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 import os
+from datetime import datetime
 
 #revision date (today's date)
 r_year = '2025'
@@ -24,10 +24,10 @@ r_day = '5'
 path = 'C:\\Users\\kokorn\\Documents\\2023 Deployment\\R1 STAQS Field\\'
 
 #initialize loops
-locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
-pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
-latitudes = [34.38189,33.97676,34.13685,34.05985,34.95991]
-longitudes = [-117.67809,-118.03032,-118.12608,-117.14573,-117.88107]
+locations = ['AFRC','TMF','Whittier','Caltech','Redlands']
+pods = ['YPODR9','YPODA2','YPODA7','YPODG5','YPODL5']
+latitudes = [34.95991,34.38189,33.97676,34.13685,34.05985]
+longitudes = [-117.88107,-117.67809,-118.03032,-118.12608,-117.14573]
 pollutants = ['CH4','HCHO','O3','CO2']
 
 for k in range(len(pods)):
@@ -46,7 +46,7 @@ for k in range(len(pods)):
         #Rename the index to match that of the pandora
         pod = pod.rename_axis('datetime')
         #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-        pod.index = pd.to_datetime(pod.index,format="%d-%b-%Y %H:%M:%S",errors='coerce')
+        pod.index = pd.to_datetime(pod.index,errors='coerce')
         #Change the pollutant column name
         pod.columns.values[0] = '{}'.format(pollutants[n])
         
