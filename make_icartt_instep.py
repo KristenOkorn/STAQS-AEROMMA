@@ -16,28 +16,28 @@ from datetime import datetime, timedelta
 import os
 
 #revision date (today's date)
-r_year = '2024'
-r_month = '6'
-r_day = '18'
+r_year = '2025'
+r_month = '9'
+r_day = '5'
 
 #create a directory path for us to pull from / save to
-path = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024\\'
+path = 'C:\\Users\\kokorn\\Documents\\2023 Deployment\\R1 STAQS Field\\'
 
 #initialize loops
-locations = ['TMF','AFRC','Whittier','Caltech','Redlands']
-pods = ['YPODA2','YPODR9','YPODA7','YPODG5','YPODL5']
-latitudes = [34.38189,34.95991,33.97676,34.13685,34.05985]
-longitudes = [-117.67809,-117.88107,-118.03032,-118.12608,-117.14573]
+locations = ['TMF','Whittier','Caltech','Redlands','AFRC']
+pods = ['YPODA2','YPODA7','YPODG5','YPODL5','YPODR9']
+latitudes = [34.38189,33.97676,34.13685,34.05985,34.95991]
+longitudes = [-117.67809,-118.03032,-118.12608,-117.14573,-117.88107]
 pollutants = ['CH4','HCHO','O3','CO2']
 
 for k in range(len(pods)):
     #Initialize the file
-    output_name = 'staqs-{}-CH4-CH2O-O3-CO2_INSTEP_20230607_R0.ict'.format(locations[k])
+    output_name = 'staqs-{}-CH4-CH2O-O3-CO2_INSTEP_20230607_R1.ict'.format(locations[k])
     
     #-------------------------------------
     #load in the data for each pollutant
     for n in range(len(pollutants)):
-        filename = "{}_{}.csv".format(pods[k],pollutants[n])
+        filename = "{}_{}_field_corrected.csv".format(pods[k],pollutants[n])
         #read in the first worksheet from the workbook myexcel.xlsx
         filepath = os.path.join(path, filename)
         pod = pd.read_csv(filepath,index_col=0)  
@@ -103,21 +103,16 @@ for k in range(len(pods)):
             'Longitude' : data['Longitude']})
 
     #make sure our time columns were imported as datetimes (w fractional seconds) (again)
-    df['Time_Start']= pd.to_datetime(df['Time_Start'],infer_datetime_format=True)
-    df['Time_Stop']= pd.to_datetime(df['Time_Stop'],infer_datetime_format=True)
-    df['Time_Mid']= pd.to_datetime(df['Time_Mid'],infer_datetime_format=True)
-
+    df['Time_Start']= pd.to_datetime(df['Time_Start'],format='%m/%d/%Y %H:%M:%S')
+    df['Time_Stop']= pd.to_datetime(df['Time_Stop'],format='%m/%d/%Y %H:%M:%S')
+    df['Time_Mid']= pd.to_datetime(df['Time_Mid'],format='%m/%d/%Y %H:%M:%S')
+    
     #reset the index to make it start at 0
     df = df.reset_index(drop=True)
 
     #now populate time_mid and time_end
-    for index, row in df.iterrows():
-        #first make sure we don't go out of bounds
-        if index < len(df):
-            #Set the Time_End to 59 seconds past the start
-            df.iloc[index,1] = df.iloc[index,0] + timedelta(seconds=59)
-            #Set the Time_Mid to 30s past the start
-            df.iloc[index,2] = df.iloc[index,0] + timedelta(seconds=30)
+    df[df.columns[1]] = df.iloc[:, 0] + pd.Timedelta(seconds=59)
+    df[df.columns[2]] = df.iloc[:, 0] + pd.Timedelta(seconds=30)
   
     #make sure our datetimes are all in ascending order        
     df = df.sort_values(by='Time_Start')  
@@ -127,10 +122,7 @@ for k in range(len(pods)):
     
     # %% output data
          
-    #save out a version with normal datetime stamps for easier plotting
-    df.to_excel('{}_cleaned_R0.xlsx'.format(pods[k]),index=False)
-    
-    #convert timestamp to seconds after midnight on 6/1/2023
+    #convert timestamp to seconds after midnight on 6/7/2023
     #Set the reference datetime
     reference_datetime = pd.to_datetime('6/7/2023 00:00:00', format='%m/%d/%Y %H:%M:%S')
     #Calculate the time difference in seconds
@@ -175,7 +167,7 @@ for k in range(len(pods)):
     header += 'ASSOCIATED_DATA: N/A\n'
     header += 'INSTRUMENT_INFO: Low-cost ground-based sensor packages; see website for additional details: https://www.nasa.gov/inexpensive-network-sensor-technology-exploring-pollution-instep/.\n'
     header += 'DATA_INFO: Low-cost sensor data subject to additional calibrations in future release\n'
-    header += 'UNCERTAINTY: Uncertainty varies slightly for each sensor package. Median uncertainty for test data is approximately: 13% for CH4, 15% for CH2O, 4% for O3, and 1% for CO2. Contact PI for more information.\n'
+    header += 'UNCERTAINTY: Uncertainty varies slightly for each sensor package. Median uncertainty for full calibration data is approximately: 23% for CH4, 40% for CH2O, 10% for O3, and 13% for CO2. Contact PI for more information.\n'
     header += 'ULOD_FLAG: -7777\n'
     header += 'ULOD_VALUE: N/A\n'
     header += 'LLOD_FLAG: -8888\n'
@@ -184,8 +176,8 @@ for k in range(len(pods)):
     header += 'PROJECT_INFO: NASA Ames Trace Gas Data (2023 STAQS)\n'
     header += 'STIPULATIONS_ON_USE: This data is subject to further review. Users must consult the PI and/or DM prior to use. As a matter of professional courtesy, consideration for co-authorship is expected for publications utilizing this data.\n'
     header += 'OTHER_COMMENTS: N/A\n'
-    header += 'REVISION: R0\n'
-    header += 'R0: Field data\n'
+    header += 'REVISION: R1\n'
+    header += 'R1: Field data. Previous revisions may contain significant overfitting.\n'
     header += 'Time_Start,Time_Stop,Time_Mid,CH4,CH2O,O3,CO2,Latitude,Longitude\n'
 
     #append the defined header to the already created data file
