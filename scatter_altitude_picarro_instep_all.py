@@ -21,8 +21,8 @@ import numpy as np
 import math
 
 #get the relevant location data for each
-locations = ['Whittier','Redlands','Caltech','TMF'] #'AFRC', 'TMF',
-pods = ['YPODA7','YPODL5','YPODG5','YPODA2'] #'YPODR9', 'YPODA2',
+locations = ['Whittier','Redlands','TMF','AFRC', 'Caltech']
+pods = ['YPODA7','YPODL5','YPODA2','YPODR9', 'YPODG5']
 
 for n in range(len(locations)): 
     #-------------------------------------
@@ -53,9 +53,9 @@ for n in range(len(locations)):
     
     #-------------------------------------
     #now load in the matching pod data - CH4
-    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\RB STAQS Field 2024'
+    podPath = 'C:\\Users\\okorn\\Documents\\2023 Deployment\\R1 STAQS Field'
     #get the filename for the pod
-    podfilename = "{}_CH4.csv".format(pods[n])
+    podfilename = "{}_CH4_field_corrected.csv".format(pods[n])
     #read in the first worksheet from the workbook myexcel.xlsx
     podfilepath = os.path.join(podPath, podfilename)
     podch4 = pd.read_csv(podfilepath,index_col=0)  
@@ -64,20 +64,16 @@ for n in range(len(locations)):
     #Rename the index to match that of the pandora
     podch4 = podch4.rename_axis('datetime')
     #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-    podch4.index = pd.to_datetime(podch4.index,format="%d-%b-%Y %H:%M:%S",errors='coerce')
+    podch4.index = pd.to_datetime(podch4.index,errors='coerce')
     #Change the pollutant column name
     podch4.columns.values[0] = 'INSTEP CH4'
     #add a column for altitude - will all be 0
     podch4['INSTEP altitude'] = 0
-    
-    #get the data into UTC (from PDT) #different for each pod!!
-    if locations[n] != 'Redlands':
-        podch4.index += pd.to_timedelta(7, unit='h')
-    
+
     #-------------------------------------
     #now load in the matching pod data - CO2
     #get the filename for the pod
-    podfilename = "{}_CO2.csv".format(pods[n])
+    podfilename = "{}_CO2_field_corrected.csv".format(pods[n])
     #read in the first worksheet from the workbook myexcel.xlsx
     podfilepath = os.path.join(podPath, podfilename)
     podco2 = pd.read_csv(podfilepath,index_col=0)  
@@ -86,16 +82,26 @@ for n in range(len(locations)):
     #Rename the index to match that of the pandora
     podco2 = podco2.rename_axis('datetime')
     #Convert the index to a DatetimeIndex and set the nanosecond values to zero
-    podco2.index = pd.to_datetime(podco2.index,format="%d-%b-%Y %H:%M:%S",errors='coerce')
+    podco2.index = pd.to_datetime(podco2.index,errors='coerce')
     #Change the pollutant column name
     podco2.columns.values[0] = 'INSTEP CO2'
     #add a column for altitude - will all be 0
     podco2['INSTEP altitude'] = 0
-    
-    #get the data into UTC (from PDT) #different for each pod!!
-    if locations[n] != 'Redlands':
-        podco2.index += pd.to_timedelta(7, unit='h')
 
+    #-------------------------------------
+    
+    #get a minute avg for picarro so we don't have to match s or ms
+    picarroch4_minutely = picarroch4.resample('1T').mean()
+    picarroco2_minutely = picarroco2.resample('1T').mean()
+    
+    #now get all of the times to match - both picarro & pod
+    picarroch4_pod_agg = podch4.index.union(picarroch4.index)
+    picarroco2_pod_agg = podco2.index.union(picarroco2.index)
+    
+    #filter the pod data based on these aggregates - so we only get the right times
+    podch4 = podch4[podch4.index.isin(picarroch4_pod_agg)]
+    podco2 = podco2[podco2.index.isin(picarroco2_pod_agg)]
+    
     #-------------------------------------
     
     #now load in the matching TCCON data - Caltech & AFRC only
@@ -115,13 +121,7 @@ for n in range(len(locations)):
     
         #-------------------------------------
         #we only need to merge the tccon data with our CH4 & CO2
-        
-        #get a minute avg for picarro so we don't have to match s or ms
-        picarroch4_minutely = picarroch4.resample('1T').mean()
-        picarroco2_minutely = picarroco2.resample('1T').mean()
-        #now get all of the times to match - both picarro & pod
-        picarroch4_pod_agg = picarroch4_minutely.index.union(podch4.index)
-        picarroco2_pod_agg = picarroco2_minutely.index.union(podco2.index)
+       
         #now filter tccon based on these  aggregates
         tcconch4 = tccon[tccon.index.isin(picarroch4_pod_agg)]
         tcconco2 = tccon[tccon.index.isin(picarroco2_pod_agg)]
@@ -140,6 +140,14 @@ for n in range(len(locations)):
     x_max_co2 = math.ceil(max(picarroco2['CO2_ppm'].max(), podco2['INSTEP CO2'].max()))
     x_min_co2 = math.ceil(min(picarroco2['CO2_ppm'].min(), podco2['INSTEP CO2'].min())) -10
     y_max_co2 = math.ceil(picarro['altitude'].max() +80)
+    
+    #override this for tmf ch4 weirdness
+    if locations[n] == 'TMF':
+        x_max_ch4 = 3
+    
+    #overwrite x axis for whittier - a few high points messing up the scale
+    if locations[n] == 'AFRC':
+        x_max_ch4 = 3
     
     #overwrite y_max if whittier - one high point messing up the scale
     if locations[n] == 'Whittier':
@@ -207,36 +215,33 @@ for n in range(len(locations)):
     #add the tccon ch4 data if applicable
     if locations[n] == 'Caltech' or locations[n] == 'AFRC':
         for k, (day, df) in enumerate(tcconch4_split_dataframes.items()): 
-            #use our max y's to create an altitude column for tccon if applicable
-            if locations[n] == 'Caltech' or locations[n] == 'AFRC':
-                #get the altitude for ch4
-                df['altitude'] = np.linspace(0, y_max_ch4, len(df))
-                #now median
-                df['TCCON CH4'] = np.nanmedian(df['TCCON CH4'])
-                #CH4 in the right column
-                #and create a linspace of only 15 points so its not too crowded on the plot
-                lin_ch4 = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['TCCON CH4']
-                lin_alt = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['altitude']
-                axs[k,1].scatter(lin_ch4, lin_alt, label='TCCON', color='purple')
+            #get the altitude for ch4
+            df['altitude'] = np.linspace(0, y_max_ch4, len(df))
+            #now median
+            df['TCCON CH4'] = np.nanmedian(df['TCCON CH4'])
+            #CH4 in the right column
+            #and create a linspace of only 15 points so its not too crowded on the plot
+            lin_ch4 = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['TCCON CH4']
+            lin_alt = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['altitude']
+            axs[k,1].scatter(lin_ch4, lin_alt, label='TCCON', color='orange')
         
         #add the tccon co2 data if applicable
         for k, (day, df) in enumerate(tcconco2_split_dataframes.items()):
-            if locations[n] == 'Caltech' or locations[n] == 'AFRC':
-                #get the altitude column for co2
-                df['altitude'] = np.linspace(0, y_max_co2, len(df))
-                #now median
-                df['TCCON CO2'] = np.nanmedian(df['TCCON CO2'])
-                #CO2 in the left column
-                #and create a linspace of only 15 points so its not too crowded on the plot
-                lin_co2 = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['TCCON CO2']
-                lin_alt = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['altitude']
-                axs[k,0].scatter(lin_ch4, lin_alt, label='TCCON', color='purple')
-        
+            #get the altitude column for co2
+            df['altitude'] = np.linspace(0, y_max_co2, len(df))
+            #now median
+            df['TCCON CO2'] = np.nanmedian(df['TCCON CO2'])
+            #CO2 in the left column
+            #and create a linspace of only 15 points so its not too crowded on the plot
+            lin_co2 = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['TCCON CO2']
+            lin_alt = df.iloc[np.linspace(0, len(df) - 1, 15, dtype=int)]['altitude']
+            axs[k,0].scatter(lin_co2, lin_alt, label='TCCON', color='orange')
+    
     #then plot the pod ch4 & do some formatting
     for k, (day, df) in enumerate(ch4_split_dataframes.items()):   
-        axs[k,1].scatter(df['INSTEP CH4'], df['INSTEP altitude'], label='INSTEP', color='red')
+        axs[k,1].scatter(df['INSTEP CH4'], df['INSTEP altitude'], label='INSTEP', color='magenta')
         #Add a title with the date to each subplot
-        axs[k,1].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
+        axs[k,1].set_title('{} - {}'.format(locations[n], day), y=.9)  # Adjust the vertical position (0 to 1)
         axs[k,1].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
         # Set the font size of the tick labels
         axs[k,1].tick_params(axis='both', labelsize=12)
@@ -245,12 +250,16 @@ for n in range(len(locations)):
         axs[k,1].set_xlim(x_min_ch4, x_max_ch4)
         axs[k,1].set_ylim(y_min, y_max_ch4)
         axs[k,1].autoscale(False)
+        
+        #nov25 version - individual x&y axis labels for each subplot
+        axs[k,1].set_xlabel('CH4 (ppm)')
+        axs[k,1].set_ylabel('Altitude (m)')
     
     #then plot the pod co2 & do some formatting
     for k, (day, df) in enumerate(co2_split_dataframes.items()):
-        axs[k,0].scatter(df['INSTEP CO2'], df['INSTEP altitude'], label='INSTEP', color='red')
+        axs[k,0].scatter(df['INSTEP CO2'], df['INSTEP altitude'], label='INSTEP', color='magenta')
         #Add a title with the date to each subplot
-        axs[k,0].set_title('{}'.format(day), y=.9)  # Adjust the vertical position (0 to 1)
+        axs[k,0].set_title('{} - {}'.format(locations[n],day), y=.9)  # Adjust the vertical position (0 to 1)
         axs[k,0].legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))
         # Set the font size of the tick labels
         axs[k,0].tick_params(axis='both', labelsize=12)
@@ -259,6 +268,10 @@ for n in range(len(locations)):
         axs[k,0].set_xlim(x_min_co2, x_max_co2)
         axs[k,0].set_ylim(y_min, y_max_ch4)
         axs[k,0].autoscale(False)
+        
+        #nov25 version - individual x&y axis labels for each subplot
+        axs[k,0].set_xlabel('CO2 (ppm)')
+        axs[k,0].set_ylabel('Altitude (m)')
         
     #Increase vertical space between subplots
     plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
