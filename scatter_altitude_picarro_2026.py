@@ -21,7 +21,7 @@ pods = ['YPODA7','YPODL5','YPODA2','YPODR9', 'YPODG5']
 
 #define threshold for gaps in data to be counted as separate flights
 #most flights are about 5hrs long
-gap_threshold = pd.Timedelta(hours=4)
+gap_threshold = pd.Timedelta(hours=2)
 
 for n in range(len(locations)): 
     #-------------------------------------
@@ -234,7 +234,8 @@ for n in range(len(locations)):
     #figure out how many days we have - for how many subplots
     num_coin= len(ch4_coin_windows)
     #also get the list of them to split by
-    coin_list = ch4_coin_windows.keys()
+    ch4_coin_list = ch4_coin_windows.keys()
+    co2_coin_list = co2_coin_windows.keys()
     
     #initialize figure - subplot for each day
     fig, axs = plt.subplots(num_coin, 2, figsize=(16, 4 * num_coin))
@@ -245,35 +246,24 @@ for n in range(len(locations)):
         axs = [axs]
     #-------------------------------------
     
-    #now start plotting - new subplot for each coincidence
-    for l, coin in enumerate(coin_list):
+    #now start plotting ch4 - new subplot for each coincidence
+    for l, coin in enumerate(ch4_coin_list):
         
         #limit  each dataframe to the current coincidence
         picarroch4_lim = picarroch4[picarroch4["coincidence"] == coin]
-        picarroco2_lim = picarroco2[picarroco2["coincidence"] == coin]
         podch4_lim = podch4[podch4["coincidence"] == coin]
-        podco2_lim = podco2[podco2["coincidence"] == coin]
         
         #first plot the ch4 flight data
         if not picarroch4_lim.empty:
             axs[l,1].scatter(picarroch4['CH4_ppm'], picarroch4['altitude'], label='Picarro', color='black')
-        #then plot the co2 flight data
-        if not picarroco2_lim.empty:
-            axs[l,0].scatter(picarroco2['CO2_ppm'], picarroco2['altitude'], label='Picarro', color='black')
         #then plot the pod ch4 data
         if not podch4_lim.empty:
             axs[l,1].scatter(podch4_lim['INSTEP CH4'], podch4_lim['INSTEP altitude'], label='INSTEP', color='magenta')
-        #then plot the pod co2 data
-        if not podco2_lim.empty:
-            axs[l,0].scatter(podco2_lim['INSTEP CO2'], podco2_lim['INSTEP altitude'], label='INSTEP', color='magenta')
     
-    
-        #add the tccon & tardiss data if applicable
+        #add the tccon data if applicable
         if locations[n] == 'Caltech' or locations[n] == 'AFRC':
             #limit  each dataframe to the current coincidence
             tcconch4_lim = tcconch4[tcconch4["coincidence"] == coin]
-            tcconco2_lim = tcconco2[tcconco2["coincidence"] == coin]
-            tardiss_lim = tardiss[tardiss["coincidence"] == coin]
             
             #start with tccon ch4
             if not tcconch4_lim.empty:
@@ -288,6 +278,58 @@ for n in range(len(locations)):
                 #now plot tccon ch4    
                 axs[l,1].scatter(lin_ch4, lin_alt, label='TCCON', color='orange')
                 
+            
+        #---Subplot Beautification---
+        #Standardize the axes - ch4
+        axs[l,1].set_xlim(1.75, ch4_max)
+        axs[l,1].set_ylim(y_min, ch4_alt_max)
+        axs[l,1].autoscale(False)
+        
+        #Standardize the axes - co2
+        axs[l,0].set_xlim(375, co2_max)
+        axs[l,0].set_ylim(y_min, co2_alt_max)
+        axs[l,0].autoscale(False)
+        
+        #override for whittier - high points throwing off zoom
+        if locations[n] == 'Whittier':
+            axs[l,1].set_ylim(y_min,800)
+            axs[l,0].set_ylim(y_min,800)
+            
+        #Now plot the legend for both
+        axs[l,1].legend(loc='upper right', bbox_to_anchor=(1.0, 0.7)) 
+        axs[l,0].legend(loc='upper right', bbox_to_anchor=(1.0, 0.7)) 
+            
+        #Add a subtitle with the location & coincidence to each subplot
+        axs[l,1].set_title('{} - Coincidence {}'.format(locations[n],l), y=.9)  # Adjust the vertical position (0 to 1)
+        axs[l,0].set_title('{} - Coincidence {}'.format(locations[n],l), y=.9)
+        
+        #nov25 version - individual x&y axis labels for each subplot
+        axs[l,1].set_ylabel('Altitude (m)')
+        axs[l,0].set_ylabel('Altitude (m)')
+        axs[-1,1].set_xlabel('CH4(ppm)', ha='center',fontsize=16)
+        axs[-1,0].set_xlabel('CO2(ppm)', ha='center',fontsize=16)
+            
+        #-------------------------------------
+    #now plot all the co2 data - new subplot for each coincidence
+    for l, coin in enumerate(co2_coin_list):
+        
+        #limit  each dataframe to the current coincidence
+        picarroco2_lim = picarroco2[picarroco2["coincidence"] == coin]
+        podco2_lim = podco2[podco2["coincidence"] == coin]
+        
+        #then plot the co2 flight data
+        if not picarroco2_lim.empty:
+            axs[l,0].scatter(picarroco2['CO2_ppm'], picarroco2['altitude'], label='Picarro', color='black')
+        #then plot the pod co2 data
+        if not podco2_lim.empty:
+            axs[l,0].scatter(podco2_lim['INSTEP CO2'], podco2_lim['INSTEP altitude'], label='INSTEP', color='magenta')
+            
+        #add the tccon & tardiss data if applicable
+        if locations[n] == 'Caltech' or locations[n] == 'AFRC':
+            #limit  each dataframe to the current coincidence
+            tcconco2_lim = tcconco2[tcconco2["coincidence"] == coin]
+            tardiss_lim = tardiss[tardiss["coincidence"] == coin]
+    
             #now tccon co2
             if not tcconco2_lim.empty:
                 #get the altitude for tccon ch4
@@ -313,33 +355,6 @@ for n in range(len(locations)):
                 #now plot 
                 axs[l,0].scatter(lin_tardiss, lin_alt, label='TARDISS', color='purple')       
         
-        #---Subplot Beautification---
-        #Standardize the axes - ch4
-        axs[l,1].set_xlim(1.75, ch4_max)
-        axs[l,1].set_ylim(y_min, ch4_alt_max)
-        axs[l,1].autoscale(False)
-        
-        #Standardize the axes - co2
-        axs[l,0].set_xlim(375, co2_max)
-        axs[l,0].set_ylim(y_min, co2_alt_max)
-        axs[l,0].autoscale(False)
-            
-        #Now plot the legend for both
-        axs[l,1].legend(loc='upper right', bbox_to_anchor=(1.0, 0.7)) 
-        axs[l,0].legend(loc='upper right', bbox_to_anchor=(1.0, 0.7)) 
-            
-        #Add a subtitle with the location & coincidence to each subplot
-        axs[l,1].set_title('{} - Coincidence {}'.format(locations[n],l), y=.9)  # Adjust the vertical position (0 to 1)
-        axs[l,0].set_title('{} - Coincidence {}'.format(locations[n],l), y=.9)
-        
-        #nov25 version - individual x&y axis labels for each subplot
-        axs[l,1].set_ylabel('Altitude (m)')
-        axs[l,0].set_ylabel('Altitude (m)')
-        axs[-1,1].set_xlabel('CH4(ppm)', ha='center',fontsize=16)
-        axs[-1,0].set_xlabel('CO2(ppm)', ha='center',fontsize=16)
-            
-        #-------------------------------------
-    
        
     #Increase vertical space between subplots
     plt.subplots_adjust(hspace=0.2, top=0.9, bottom=0.05)  # You can adjust the value as needed
@@ -353,6 +368,6 @@ for n in range(len(locations)):
     Spath = 'C:\\Users\\okorn\\Documents\\2023 Aeromma\\Picarro Plots\\'
     
     #Create the full path with the figure name
-    savePath = os.path.join(Spath,'altitude_CH4_CO2_{}_newcoincidences_4hr'.format(locations[n]))
+    savePath = os.path.join(Spath,'altitude_CH4_CO2_{}_newcoincidences_2hr'.format(locations[n]))
     #Save the figure to a filepath
     fig.savefig(savePath)
